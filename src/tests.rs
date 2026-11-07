@@ -1,7 +1,11 @@
 use super::Contract;
-use near_contract_standards::storage_management::StorageManagement;
+use near_contract_standards::{
+    fungible_token::core::FungibleTokenCore,
+    storage_management::StorageManagement,
+};
 use near_sdk::{
     env,
+    json_types::U128,
     test_utils::VMContextBuilder,
     testing_env,
     AccountId,
@@ -51,7 +55,7 @@ fn settle_as(contract: &mut Contract, day: u64) {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "account has already checked in today")]
 fn check_in_twice_in_one_day_is_rejected() {
     let alice = account("alice.testnet");
     let mut contract = new_contract(1);
@@ -61,7 +65,7 @@ fn check_in_twice_in_one_day_is_rejected() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "account must register token storage before check-in")]
 fn unregistered_account_cannot_check_in() {
     let alice = account("alice.testnet");
     let mut contract = new_contract(1);
@@ -69,7 +73,7 @@ fn unregistered_account_cannot_check_in() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "there is no unresolved reward to claim")]
 fn claim_twice_is_rejected() {
     let alice = account("alice.testnet");
     let mut contract = new_contract(1);
@@ -110,7 +114,7 @@ fn settle_is_safe_to_call_twice() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "settlement backlog must be cleared before check-in")]
 fn check_in_is_blocked_until_a_three_day_backlog_is_cleared() {
     let alice = account("alice.testnet");
     let mut contract = new_contract(1);
@@ -176,7 +180,7 @@ fn exact_rounding_leaves_checker_dust_unminted() {
 }
 
 #[test]
-fn target_exactly_succeeds_and_one_below_burns_exactly_five_percent() {
+fn target_met_exactly_is_successful() {
     let target = 2;
     let mut success = new_contract(target);
     for name in ["alice.testnet", "bob.testnet"] {
@@ -186,7 +190,11 @@ fn target_exactly_succeeds_and_one_below_burns_exactly_five_percent() {
     }
     settle_as(&mut success, 1);
     assert_eq!(success.streak().0, 1);
+}
 
+#[test]
+fn target_missed_by_one_burns_exactly_five_percent() {
+    let target = 2;
     let mut missed = new_contract(target);
     let alice = account("alice.testnet");
     register(&mut missed, &alice);
@@ -225,7 +233,7 @@ fn total_supply_never_exceeds_one_billion() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "cannot unregister while a reward is unresolved")]
 fn storage_unregister_with_force_is_refused_for_unresolved_reward() {
     let alice = account("alice.testnet");
     let mut contract = new_contract(1);
@@ -237,7 +245,7 @@ fn storage_unregister_with_force_is_refused_for_unresolved_reward() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "cannot unregister while a reward is unresolved")]
 fn storage_unregister_without_force_is_refused_for_unresolved_reward() {
     let alice = account("alice.testnet");
     let mut contract = new_contract(1);
@@ -249,7 +257,7 @@ fn storage_unregister_without_force_is_refused_for_unresolved_reward() {
 }
 
 #[test]
-#[should_panic]
+#[should_panic(expected = "settlement backlog must be cleared before claim")]
 fn claim_is_rejected_while_a_backlog_exists() {
     let alice = account("alice.testnet");
     let mut contract = new_contract(1);
@@ -268,4 +276,63 @@ fn controllable_clock_uses_the_selected_day() {
     check_in_as(&mut contract, &alice, 2);
     assert_eq!(env::block_timestamp() / DAY_NS, 2);
     assert_eq!(contract.today_checkins().0, 1);
+}
+
+#[test]
+#[should_panic(expected = "reward escrow cannot transfer directly")]
+fn reward_escrow_cannot_transfer_with_ft_transfer() {
+    let mut contract = new_contract(1);
+    let escrow = account("rewards.croc");
+    set_context(&escrow, 0);
+    contract.ft_transfer(account("alice.testnet"), U128(1), None);
+}
+
+#[test]
+#[should_panic(expected = "reward escrow cannot transfer directly")]
+fn reward_escrow_cannot_transfer_with_ft_transfer_call() {
+    let mut contract = new_contract(1);
+    let escrow = account("rewards.croc");
+    set_context(&escrow, 0);
+    let _ = contract.ft_transfer_call(
+        account("alice.testnet"),
+        U128(1),
+        None,
+        String::new(),
+    );
+}
+
+#[test]
+fn supply_matches_treasury_escrow_and_holders_after_day_claim_and_transfer() {
+    let alice = account("alice.testnet");
+    let bob = account("bob.testnet");
+    let escrow = account("rewards.croc");
+    let mut contract = new_contract(1);
+    register(&mut contract, &alice);
+    register(&mut contract, &bob);
+
+    check_in_as(&mut contract, &alice, 0);
+    settle_as(&mut contract, 1);
+    set_context(&alice, 1);
+    contract.claim();
+    let treasury_after_good_day = contract.treasury().0;
+    let supply_after_claim = contract.total_supply().0;
+    assert_eq!(
+        supply_after_claim,
+        treasury_after_good_day
+            + contract.balance_of(escrow.clone()).0
+            + contract.balance_of(alice.clone()).0
+            + contract.balance_of(bob.clone()).0
+    );
+
+    // Day 1 has no check-ins, so settling it burns exactly five percent.
+    settle_as(&mut contract, 2);
+    set_context(&alice, 2);
+    contract.ft_transfer(bob.clone(), contract.balance_of(alice.clone()), None);
+    assert_eq!(
+        contract.total_supply().0,
+        contract.treasury().0
+            + contract.balance_of(escrow).0
+            + contract.balance_of(alice).0
+            + contract.balance_of(bob).0
+    );
 }
