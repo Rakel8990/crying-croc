@@ -1,13 +1,20 @@
 use near_contract_standards::fungible_token::{
     core_impl::{Balance, FungibleToken},
     events::FtMint,
+    FungibleTokenCore,
+    FungibleTokenResolver,
     metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC},
+};
+use near_contract_standards::storage_management::{
+    StorageBalance, StorageBalanceBounds, StorageManagement,
 };
 use near_sdk::{
     borsh::BorshSerialize,
     env,
     json_types::U128,
     near,
+    NearToken,
+    PromiseOrValue,
     store::LookupMap,
     AccountId,
     BorshStorageKey,
@@ -83,7 +90,7 @@ impl Contract {
         }
         .emit();
 
-        Self {
+        let mut contract = Self {
             token,
             contract_account_id,
             reward_escrow_account_id,
@@ -96,7 +103,9 @@ impl Contract {
             checkin_counts: LookupMap::new(StorageKey::CheckinCounts),
             account_progress: LookupMap::new(StorageKey::AccountProgress),
             day_settlements: LookupMap::new(StorageKey::DaySettlements),
-        }
+        };
+        contract.measure_registered_account_storage();
+        contract
     }
 
     pub fn check_in(&mut self) {
@@ -168,18 +177,6 @@ impl Contract {
         U128(self.resolve_pending_reward(&account_id, "claim"))
     }
 
-    pub fn storage_deposit(
-        &mut self,
-        _account_id: Option<AccountId>,
-        _registration_only: Option<bool>,
-    ) {
-        panic!("TODO stub: storage_deposit")
-    }
-
-    pub fn storage_unregister(&mut self, _force: bool) -> bool {
-        panic!("TODO stub: storage_unregister")
-    }
-
     pub fn day_length_ns(&self) -> u64 {
         self.day_length_ns
     }
@@ -217,6 +214,23 @@ impl Contract {
 }
 
 impl Contract {
+    fn measure_registered_account_storage(&mut self) {
+        let account_id: AccountId = "a".repeat(64).parse().expect("valid measurement account");
+        let initial_storage_usage = env::storage_usage();
+        self.token.internal_register_account(&account_id);
+        self.account_progress.insert(
+            account_id.clone(),
+            AccountProgress {
+                last_checkin_day: 0,
+                resolved: true,
+            },
+        );
+        let registered_account_storage = env::storage_usage() - initial_storage_usage;
+        self.token.accounts.remove(&account_id);
+        self.account_progress.remove(&account_id);
+        self.token.account_storage_usage = registered_account_storage;
+    }
+
     fn resolve_pending_reward(&mut self, account_id: &AccountId, trigger: &str) -> Balance {
         let pending = self
             .account_progress
@@ -373,6 +387,117 @@ impl Contract {
 }
 
 #[near]
+impl FungibleTokenCore for Contract {
+    #[payable]
+    fn ft_transfer(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>) {
+        let sender_id = env::predecessor_account_id();
+        assert_ne!(sender_id, self.contract_account_id, "treasury is burn-only");
+        assert_ne!(
+            sender_id, self.reward_escrow_account_id,
+            "reward escrow cannot transfer directly"
+        );
+        self.token.ft_transfer(receiver_id, amount, memo);
+    }
+
+    #[payable]
+    fn ft_transfer_call(
+        &mut self,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        let sender_id = env::predecessor_account_id();
+        assert_ne!(sender_id, self.contract_account_id, "treasury is burn-only");
+        assert_ne!(
+            sender_id, self.reward_escrow_account_id,
+            "reward escrow cannot transfer directly"
+        );
+        self.token.ft_transfer_call(receiver_id, amount, memo, msg)
+    }
+
+    fn ft_total_supply(&self) -> U128 {
+        self.token.ft_total_supply()
+    }
+
+    fn ft_balance_of(&self, account_id: AccountId) -> U128 {
+        self.token.ft_balance_of(account_id)
+    }
+}
+
+#[near]
+impl FungibleTokenResolver for Contract {
+    #[private]
+    fn ft_resolve_transfer(
+        &mut self,
+        sender_id: AccountId,
+        receiver_id: AccountId,
+        amount: U128,
+    ) -> U128 {
+        self.token
+            .internal_ft_resolve_transfer(&sender_id, receiver_id, amount)
+            .0
+            .into()
+    }
+}
+
+#[near]
+impl StorageManagement for Contract {
+    #[payable]
+    fn storage_deposit(
+        &mut self,
+        account_id: Option<AccountId>,
+        registration_only: Option<bool>,
+    ) -> StorageBalance {
+        self.token.storage_deposit(account_id, registration_only)
+    }
+
+    #[payable]
+    fn storage_withdraw(&mut self, amount: Option<NearToken>) -> StorageBalance {
+        self.token.storage_withdraw(amount)
+    }
+
+    #[payable]
+    fn storage_unregister(&mut self, force: Option<bool>) -> bool {
+        let account_id = env::predecessor_account_id();
+        assert_ne!(account_id, self.contract_account_id, "treasury account is permanent");
+        assert_ne!(
+            account_id, self.reward_escrow_account_id,
+            "reward escrow account is permanent"
+        );
+        assert!(
+            self.account_progress
+                .get(&account_id)
+                .is_none_or(|progress| progress.resolved),
+            "cannot unregister while a reward is unresolved"
+        );
+
+        self.account_progress.remove(&account_id);
+        if let Some((closed_account, balance)) = self.token.internal_storage_unregister(force) {
+            if balance > 0 {
+                near_contract_standards::fungible_token::events::FtBurn {
+                    owner_id: &closed_account,
+                    amount: U128(balance),
+                    memo: Some("storage unregister burn"),
+                }
+                .emit();
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    fn storage_balance_bounds(&self) -> StorageBalanceBounds {
+        self.token.storage_balance_bounds()
+    }
+
+    fn storage_balance_of(&self, account_id: AccountId) -> Option<StorageBalance> {
+        self.token.storage_balance_of(account_id)
+    }
+}
+
+#[near]
 impl FungibleTokenMetadataProvider for Contract {
     fn ft_metadata(&self) -> FungibleTokenMetadata {
         FungibleTokenMetadata {
@@ -422,6 +547,10 @@ impl Contract {
 
     fn last_settled_day(&self) -> u64 {
         self.next_day_to_settle.saturating_sub(1)
+    }
+
+    fn storage_unregister(&mut self, force: bool) -> bool {
+        <Self as StorageManagement>::storage_unregister(self, Some(force))
     }
 }
 
