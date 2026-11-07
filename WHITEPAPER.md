@@ -27,6 +27,9 @@ Hackathon: NEAR Hackathon 2026, track "Memecoins With Mechanics". Deadline 14 No
 - Good day (check-ins >= TARGET): pot = floor(pool/200). 90% split equally among checkers (floor per checker, dust not minted), 10% to the treasury, streak +1.
 - Missed day: burn floor(treasury * 5/100), streak = 0, no mint.
 - Lazy claim: your reward for your last check-in day is paid on your next check-in or on claim(), exactly once. Per account store only last_checkin_day and a resolved flag. Per settled day store checker_count and reward_per_checker.
+- Token metadata: name "Crying Croc", symbol "CROC", 18 decimals, no icon in v1.
+- Events: use the standard NEP-141 events (ft_mint, ft_burn, ft_transfer) plus custom events for check_in, settled day (index, success or miss, amounts) and claim.
+- The contract itself pays storage for the small per-day records, so its account needs enough testnet NEAR at deploy. Deleting its keys at the end is irreversible.
 - Check-in requires NEP-145 storage registration (the user pays their own deposit; the contract never spends its own NEAR on strangers). No minimum balance.
 
 ## 4. Parameters per deployment (fixed at init, no update method)
@@ -67,7 +70,6 @@ Kept: lazy claim, 7-day settle cap, 90/10 split, burn-only treasury.
 3. Rounding and dust: use the exact formulas in RULES.md, supply accounting must match.
 4. Treasury versus emission pool confusion.
 5. Time units: block_timestamp is nanoseconds.
-
 Also: overflow-checks = true, storage_unregister must be refused while a reward is unresolved (even with force), and no admin or upgrade path.
 
 ## 9. Testing and execution rules
