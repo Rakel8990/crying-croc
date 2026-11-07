@@ -148,8 +148,24 @@ impl Contract {
         }
     }
 
-    pub fn claim(&mut self) {
-        panic!("TODO stub: claim")
+    pub fn claim(&mut self) -> U128 {
+        let current_day = env::block_timestamp() / self.day_length_ns;
+        assert!(
+            self.next_day_to_settle >= current_day,
+            "settlement backlog must be cleared before claim"
+        );
+        let account_id = env::predecessor_account_id();
+        assert!(
+            self.token.accounts.contains_key(&account_id),
+            "account must be registered to claim"
+        );
+        let has_unresolved_reward = self
+            .account_progress
+            .get(&account_id)
+            .is_some_and(|progress| !progress.resolved);
+        assert!(has_unresolved_reward, "there is no unresolved reward to claim");
+
+        U128(self.resolve_pending_reward(&account_id, "claim"))
     }
 
     pub fn storage_deposit(
