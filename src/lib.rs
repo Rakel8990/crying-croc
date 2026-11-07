@@ -76,9 +76,9 @@ impl Contract {
         assert!(target > 0, "TARGET must be greater than zero");
 
         let contract_account_id = env::current_account_id();
-        let reward_escrow_account_id: AccountId = "rewards.croc"
+        let reward_escrow_account_id: AccountId = format!("escrow.{contract_account_id}")
             .parse()
-            .expect("fixed reward escrow account is valid");
+            .expect("derived reward escrow account is valid");
         let mut token = FungibleToken::new(StorageKey::Token);
         token.internal_register_account(&contract_account_id);
         token.internal_register_account(&reward_escrow_account_id);
@@ -243,11 +243,9 @@ impl Contract {
             return 0;
         }
 
-        let reward = self
-            .day_settlements
-            .get(&day)
-            .expect("the check-in day must be settled before reward resolution")
-            .reward_per_checker;
+        let settlement = self.day_settlements.get(&day);
+        assert!(settlement.is_some(), "reward day is not settled yet");
+        let reward = settlement.unwrap().reward_per_checker;
         if reward > 0 {
             self.token.internal_transfer(
                 &self.reward_escrow_account_id,

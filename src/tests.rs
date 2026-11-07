@@ -20,6 +20,10 @@ fn account(name: &str) -> AccountId {
     name.parse().expect("valid test account")
 }
 
+fn escrow_account() -> AccountId {
+    account("escrow.croc.testnet")
+}
+
 fn set_context(who: &AccountId, day: u64) {
     let mut context = VMContextBuilder::new();
     context
@@ -40,6 +44,7 @@ fn set_transfer_context(who: &AccountId, day: u64) {
 }
 
 fn new_contract(target: u32) -> Contract {
+    set_context(&account("initializer.testnet"), 0);
     Contract::new(DAY_NS, target)
 }
 
@@ -97,6 +102,17 @@ fn claim_twice_is_rejected() {
 }
 
 #[test]
+#[should_panic(expected = "reward day is not settled yet")]
+fn claim_on_the_same_day_as_check_in_is_rejected_until_settlement() {
+    let alice = account("alice.testnet");
+    let mut contract = new_contract(1);
+    register(&mut contract, &alice);
+    check_in_as(&mut contract, &alice, 0);
+    set_context(&alice, 0);
+    contract.claim();
+}
+
+#[test]
 fn pending_reward_is_paid_before_a_new_check_in_is_recorded() {
     let alice = account("alice.testnet");
     let mut contract = new_contract(1);
@@ -121,6 +137,26 @@ fn settle_is_safe_to_call_twice() {
     settle_as(&mut contract, 1);
     assert_eq!(contract.emission_pool().0, pool_after_first);
     assert_eq!(contract.total_supply().0, supply_after_first);
+}
+
+#[test]
+fn ten_day_backlog_settles_seven_days_then_the_remaining_three() {
+    let mut contract = new_contract(1);
+
+    settle_as(&mut contract, 10);
+    assert_eq!(contract.last_settled_day(), 6, "first settle call must settle days 0 through 6");
+    for day in 0..7 {
+        assert!(contract.day_was_settled(day), "day {day} must be settled by the first call");
+    }
+    for day in 7..10 {
+        assert!(!contract.day_was_settled(day), "day {day} must remain for the second call");
+    }
+
+    settle_as(&mut contract, 10);
+    assert_eq!(contract.last_settled_day(), 9, "second settle call must finish through day 9");
+    for day in 0..10 {
+        assert!(contract.day_was_settled(day), "day {day} must be settled after both calls");
+    }
 }
 
 #[test]
@@ -292,7 +328,7 @@ fn controllable_clock_uses_the_selected_day() {
 #[should_panic(expected = "reward escrow cannot transfer directly")]
 fn reward_escrow_cannot_transfer_with_ft_transfer() {
     let mut contract = new_contract(1);
-    let escrow = account("rewards.croc");
+    let escrow = escrow_account();
     set_context(&escrow, 0);
     contract.ft_transfer(account("alice.testnet"), U128(1), None);
 }
@@ -301,7 +337,7 @@ fn reward_escrow_cannot_transfer_with_ft_transfer() {
 #[should_panic(expected = "reward escrow cannot transfer directly")]
 fn reward_escrow_cannot_transfer_with_ft_transfer_call() {
     let mut contract = new_contract(1);
-    let escrow = account("rewards.croc");
+    let escrow = escrow_account();
     set_context(&escrow, 0);
     let _ = contract.ft_transfer_call(
         account("alice.testnet"),
@@ -312,10 +348,61 @@ fn reward_escrow_cannot_transfer_with_ft_transfer_call() {
 }
 
 #[test]
+#[should_panic(expected = "treasury is burn-only")]
+fn treasury_cannot_transfer_with_ft_transfer() {
+    let mut contract = new_contract(1);
+    let treasury = account("croc.testnet");
+    set_context(&treasury, 0);
+    contract.ft_transfer(account("alice.testnet"), U128(1), None);
+}
+
+#[test]
+#[should_panic(expected = "treasury is burn-only")]
+fn treasury_cannot_transfer_with_ft_transfer_call() {
+    let mut contract = new_contract(1);
+    let treasury = account("croc.testnet");
+    set_context(&treasury, 0);
+    let _ = contract.ft_transfer_call(
+        account("alice.testnet"),
+        U128(1),
+        None,
+        String::new(),
+    );
+}
+
+#[test]
+fn claim_moves_exactly_the_recorded_reward_from_escrow_to_claimer() {
+    let alice = account("alice.testnet");
+    let escrow = escrow_account();
+    let mut contract = new_contract(1);
+    register(&mut contract, &alice);
+    check_in_as(&mut contract, &alice, 0);
+    settle_as(&mut contract, 1);
+
+    let reward = contract.reward_for_day(0).0;
+    let claimer_before = contract.balance_of(alice.clone()).0;
+    let escrow_before = contract.balance_of(escrow.clone()).0;
+    set_context(&alice, 1);
+    let claimed = contract.claim().0;
+
+    assert_eq!(claimed, reward, "claim result must equal the settled per-checker reward");
+    assert_eq!(
+        contract.balance_of(alice).0 - claimer_before,
+        reward,
+        "claimer balance must increase by exactly the recorded reward"
+    );
+    assert_eq!(
+        escrow_before - contract.balance_of(escrow).0,
+        reward,
+        "escrow balance must decrease by exactly the recorded reward"
+    );
+}
+
+#[test]
 fn supply_matches_treasury_escrow_and_holders_after_day_claim_and_transfer() {
     let alice = account("alice.testnet");
     let bob = account("bob.testnet");
-    let escrow = account("rewards.croc");
+    let escrow = escrow_account();
     let mut contract = new_contract(1);
     register(&mut contract, &alice);
     register(&mut contract, &bob);
@@ -438,7 +525,7 @@ fn sixty_day_replay_matches_independent_reference_and_simulation_csv() {
         assert_eq!(
             contract.total_supply().0,
             contract.treasury().0
-                + contract.balance_of(account("rewards.croc")).0
+                + contract.balance_of(escrow_account()).0
                 + users.iter().map(|user| contract.balance_of(user.clone()).0).sum::<u128>(),
             "supply components after day {day_number}"
         );
