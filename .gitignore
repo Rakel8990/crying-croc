@@ -1,0 +1,9 @@
+target/
+node_modules/
+.env
+.env.*
+*.key
+*.pem
+.near-credentials/
+neardev/
+.DS_Store

@@ -1,0 +1,20 @@
+name: Rust tests and contract build
+
+on: [push]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install stable Rust and WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Cache Rust dependencies and build artifacts
+        uses: Swatinem/rust-cache@v2
+      - name: Run tests
+        run: cargo test
+      - name: Build WebAssembly contract
+        run: cargo build --target wasm32-unknown-unknown --release
