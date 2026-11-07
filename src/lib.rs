@@ -145,7 +145,6 @@ impl Contract {
             self.token
                 .accounts
                 .get(&self.contract_account_id)
-                .copied()
                 .unwrap_or(0),
         )
     }
@@ -170,7 +169,7 @@ impl FungibleTokenMetadataProvider for Contract {
 #[cfg(test)]
 impl Contract {
     fn balance_of(&self, account_id: AccountId) -> U128 {
-        U128(self.token.accounts.get(&account_id).copied().unwrap_or(0))
+        U128(self.token.accounts.get(&account_id).unwrap_or(0))
     }
 
     fn total_supply(&self) -> U128 {

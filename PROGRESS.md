@@ -11,5 +11,5 @@
 - **Done:** Step 2 workflow pushed in `e510c49b7ecf775c37f84cb8e32874e6cffbee7f`; its CI log was read from the `ci-logs` branch and the SHA matched. The Actions API and raw URL both returned 404, so the log was retrieved with a read-only Git fetch instead.
 - **Failing:** On `e510c49b7ecf775c37f84cb8e32874e6cffbee7f`, `cargo test` exited 101 with 39 compile errors because the empty contract has no test API methods. `cargo build --target wasm32-unknown-unknown --release` completed successfully. This is the expected red skeleton state; no tests are reported as passing.
 - **Done:** Step 3 compile-only stubs were pushed as `8c60263553cb649f376487fd54002df5f4fba1d5`. CI compiled and ran 16 tests; 9 failed at TODO stubs. Seven broad `#[should_panic]` cases were labeled `ok` because any stub panic satisfies them, so these are not behavioral verification. The Wasm build completed. No test is reported as passing.
-- **In progress:** Step 4 — implementing contract parts in the requested order, starting with state and views.
-- **Next:** Push the state and views part, then inspect the matching-SHA Actions log.
+- **In progress:** Step 4 state and views, fix attempt 1/6. CI for `0caa33f15512329d6c453115ddcb9dc2dc07b8a3` failed to compile because the legacy token account map returns `Option<u128>`, making two `.copied()` calls invalid; removing them.
+- **Next:** Push the state/views fix and inspect the matching-SHA Actions log before proceeding to settle.
