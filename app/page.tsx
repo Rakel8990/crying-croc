@@ -1,7 +1,8 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
-import { Check, CircleDollarSign, Droplets, Flame, Sparkles, Wallet } from "lucide-react"
+import { Check, CircleDollarSign, Droplets, Flame, Sparkles, Wallet, Wrench } from "lucide-react"
 
 const steps = [
   { number: "01", title: "Check in daily", copy: "Show up and prove you are not a bot wallet.", icon: Check },
@@ -45,6 +46,7 @@ export default function Home() {
         <span className="network"><span className="live-dot" />NEAR TESTNET</span>
         <button className="connect-btn" onClick={() => setConnected((current) => !current)}><Wallet />{connected ? "Wallet Connected" : "Connect Wallet"}</button>
       </div>
+      <Link className="mechanic-link" href="/mechanic"><Wrench /> THE MECHANIC</Link>
     </header>
     <section className="hero hero-centered" id="top">
       <div className="hero-copy"><div className="eyebrow"><span /> $CROC</div><h1>$CROC<br /><span>ON NEAR.</span></h1><p>A community streak coin on NEAR. Check in every day, grow your streak, and keep the chain moving together.</p></div>
