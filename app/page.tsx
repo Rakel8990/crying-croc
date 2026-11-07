@@ -1,65 +1,36 @@
-"use client"
-
 import Link from "next/link"
-import { useState } from "react"
-import { Check, CircleDollarSign, Droplets, Flame, Sparkles, Wallet, Wrench } from "lucide-react"
+import { ArrowRight, BarChart3, Check, CircleDollarSign, ShieldCheck, Wallet } from "lucide-react"
 
-const steps = [
-  { number: "01", title: "Check in daily", copy: "Show up and prove you are not a bot wallet.", icon: Check },
-  { number: "02", title: "Earn together", copy: "When the target is met, fresh CROC is shared with the checkers.", icon: Sparkles },
-  { number: "03", title: "Feel the burn", copy: "Miss the target and 5% of the treasury is burned. Streak reset.", icon: Flame },
+const parameters = [
+  ["Maximum supply", "1B CROC"],
+  ["Initial treasury", "300M CROC"],
+  ["Target", "Daily"],
+  ["Presale", "None"],
+  ["Team allocation", "None"],
 ]
 
-function Stat({ label, value, detail }: { label: string; value: string; detail?: string }) {
-  return <div className="stat"><span className="stat-label">{label}</span><strong>{value}</strong>{detail && <span className="stat-detail">{detail}</span>}</div>
-}
+const mechanics = [
+  ["01", "Show up", "One daily check-in proves your wallet is part of the community."],
+  ["02", "Hit the target", "The daily target turns individual participation into shared momentum."],
+  ["03", "Share the outcome", "Successful days reward active checkers. Failed days burn the treasury."],
+]
 
 export default function Home() {
-  const [connected, setConnected] = useState(false)
-  const [checkingIn, setCheckingIn] = useState(false)
-  const [checkedIn, setCheckedIn] = useState(false)
-  const [streak, setStreak] = useState(0)
-  const [pending, setPending] = useState(0)
-  const [walletBalance, setWalletBalance] = useState(0)
-  const [message, setMessage] = useState("")
-
-  const checkIn = () => {
-    if (!connected || checkedIn || checkingIn) return
-    setCheckingIn(true); setMessage("")
-    window.setTimeout(() => { setCheckingIn(false); setCheckedIn(true); setStreak((current) => current + 1); setPending(1500); setMessage("Success! Reward added to pending balance.") }, 1000)
-  }
-
-  const claim = () => {
-    if (!connected || pending === 0 || checkingIn) return
-    setCheckingIn(true); setMessage("")
-    window.setTimeout(() => { setCheckingIn(false); setWalletBalance((current) => current + pending); setPending(0); setMessage("Rewards claimed!") }, 1000)
-  }
-
-  return <main className="page-shell">
-    <video className="background-video" autoPlay muted loop playsInline preload="auto" aria-hidden="true">
-      <source src="https://files.catbox.moe/2pu9xu.mp4" type="video/mp4" />
-    </video>
-    <div className="video-overlay" />
-    <div className="noise" />
-    <header className="topbar">
-      <div className="header-actions">
-        <span className="network"><span className="live-dot" />NEAR TESTNET</span>
-        <button className="connect-btn" onClick={() => setConnected((current) => !current)}><Wallet />{connected ? "Wallet Connected" : "Connect Wallet"}</button>
+  return (
+    <main>
+      <div className="video-overlay" /><div className="noise" />
+      <video className="background-video" autoPlay muted loop playsInline preload="auto" aria-hidden="true"><source src="https://files.catbox.moe/2pu9xu.mp4" type="video/mp4" /></video>
+      <div className="site-shell">
+        <header className="topbar">
+          <Link className="brand" href="/"><span className="brand-mark">C</span><span>CRYING <em>CROC</em></span></Link>
+          <nav className="nav" aria-label="Main navigation"><Link className="active" href="/">Home</Link><Link href="/check-in">Check In</Link><Link href="/protocol-stats">Protocol Stats</Link></nav>
+          <div className="header-actions"><span className="network"><span className="live-dot" />NEAR TESTNET</span><button className="connect-btn"><Wallet />Connect Wallet</button></div>
+        </header>
+        <section className="hero"><div className="hero-copy"><span className="eyebrow"><span /> COMMUNITY TOKEN EXPERIMENT</span><h1>$CROC<br /><span>ON NEAR.</span></h1><p>One community. One daily target. Every check-in counts.</p><p className="card-description">Crying Croc is a community-powered token experiment built around daily participation. Show up, reach the target, and share in the rewards. Miss the target, and the treasury takes a hit.</p><div className="hero-actions"><Link className="button" href="/check-in">Enter the Check-In <ArrowRight /></Link><Link className="button secondary" href="/protocol-stats">Explore Protocol Stats <BarChart3 /></Link></div></div></section>
+        <section className="parameter-strip" aria-label="Protocol parameters">{parameters.map(([label, value]) => <div className="parameter" key={label}><span>{label}</span><strong>{value}</strong></div>)}</section>
+        <section className="section"><div className="section-heading"><div><span className="section-kicker">THE DAILY LOOP</span><h2>Participation is<br /><span>the protocol.</span></h2></div><span className="preview-label"><span className="live-dot" />Preview Data</span></div><div className="card-grid">{mechanics.map(([number, title, copy]) => <article className="info-card" key={number}><span className="index">{number}</span><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
+        <footer className="site-footer"><span>$CROC / NEAR</span><span>Frontend preview — contract data coming later</span></footer>
       </div>
-      <Link className="mechanic-link" href="/mechanic"><Wrench /> THE MECHANIC</Link>
-    </header>
-    <section className="hero hero-centered" id="top">
-      <div className="hero-copy"><div className="eyebrow"><span /> $CROC</div><h1>$CROC<br /><span>ON NEAR.</span></h1><p>A community streak coin on NEAR. Check in every day, grow your streak, and keep the chain moving together.</p></div>
-    </section>
-
-    <section className="checkin-card" aria-labelledby="checkin-title">
-      <div className="card-top"><div><span className="section-kicker">THE CHECK-IN HUB</span><h2 id="checkin-title">Keep the streak alive.</h2></div><span className="live-pill"><span className="live-dot" /> LIVE</span></div>
-      <div className="stats-grid"><Stat label="Total supply" value="300M" detail="CROC" /><Stat label="Current streak" value={String(streak)} detail="DAYS" /><Stat label="Wallet balance" value={walletBalance.toLocaleString()} detail="CROC" /><Stat label="Pending rewards" value={pending.toLocaleString()} detail="CROC" /></div>
-      <div className="action-row"><button className="checkin-btn" disabled={!connected || checkedIn || checkingIn} onClick={checkIn}>{checkingIn ? <span className="spinner" /> : checkedIn ? <Check /> : <Droplets />}{checkingIn ? "Checking in..." : checkedIn ? "Already Checked In" : "Check In"}</button><button className="claim-btn" disabled={!connected || pending === 0 || checkingIn} onClick={claim}>{checkingIn ? "Processing..." : "Claim Rewards"}<CircleDollarSign /></button></div>
-      <div className="status-row"><span className={message ? "success" : "muted"}>{message || (!connected ? "Connect Wallet First" : "Target: 5 checkers. You are #1.")}</span><span className="status-target"><span className="pulse" /> 4 / 5 checked in</span></div>
-    </section>
-
-    <section className="how-section"><div className="section-heading"><span className="section-kicker">THE MECHANIC</span><h2>Built for the ones<br /><span>who keep showing up.</span></h2></div><div className="steps">{steps.map(({ number, title, copy, icon: Icon }) => <article className="step" key={number}><div className="step-number">{number}</div><div className="step-icon"><Icon /></div><h3>{title}</h3><p>{copy}</p></article>)}</div></section>
-
-  </main>
+    </main>
+  )
 }
