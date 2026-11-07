@@ -7,6 +7,7 @@ use near_sdk::{
     AccountId,
     NearToken,
 };
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 const DAY_NS: u64 = 24 * 60 * 60 * 1_000_000_000;
 const ONE_TOKEN: u128 = 1_000_000_000_000_000_000;
@@ -136,6 +137,22 @@ fn three_day_backlog_settles_in_day_order_and_then_allows_check_in() {
 }
 
 #[test]
+fn skipped_days_block_check_in_until_settle_is_called() {
+    let alice = account("alice.testnet");
+    let mut contract = new_contract(1);
+    register(&mut contract, &alice);
+    check_in_as(&mut contract, &alice, 0);
+
+    set_context(&alice, 4);
+    let rejected_before_settlement = catch_unwind(AssertUnwindSafe(|| contract.check_in()));
+    assert!(rejected_before_settlement.is_err());
+
+    settle_as(&mut contract, 4);
+    check_in_as(&mut contract, &alice, 4);
+    assert_eq!(contract.last_checkin_day(alice).unwrap(), 4);
+}
+
+#[test]
 fn exact_rounding_leaves_checker_dust_unminted() {
     let mut contract = new_contract(11);
     let checkers: Vec<_> = (0..11)
@@ -183,6 +200,19 @@ fn target_exactly_succeeds_and_one_below_burns_exactly_five_percent() {
 }
 
 #[test]
+fn zero_check_in_backlog_day_burns_exactly_five_percent_of_treasury() {
+    let mut contract = new_contract(1);
+    let treasury_before = contract.treasury().0;
+    let supply_before = contract.total_supply().0;
+
+    settle_as(&mut contract, 1);
+
+    let burn = treasury_before * 5 / 100;
+    assert_eq!(contract.treasury().0, treasury_before - burn);
+    assert_eq!(contract.total_supply().0, supply_before - burn);
+}
+
+#[test]
 fn total_supply_never_exceeds_one_billion() {
     let alice = account("alice.testnet");
     let mut contract = new_contract(1);
@@ -207,10 +237,34 @@ fn storage_unregister_with_force_is_refused_for_unresolved_reward() {
 }
 
 #[test]
+#[should_panic]
+fn storage_unregister_without_force_is_refused_for_unresolved_reward() {
+    let alice = account("alice.testnet");
+    let mut contract = new_contract(1);
+    register(&mut contract, &alice);
+    check_in_as(&mut contract, &alice, 0);
+    settle_as(&mut contract, 1);
+    set_context(&alice, 1);
+    contract.storage_unregister(false);
+}
+
+#[test]
+#[should_panic]
+fn claim_is_rejected_while_a_backlog_exists() {
+    let alice = account("alice.testnet");
+    let mut contract = new_contract(1);
+    register(&mut contract, &alice);
+    check_in_as(&mut contract, &alice, 0);
+    set_context(&alice, 2);
+    contract.claim();
+}
+
+#[test]
 fn controllable_clock_uses_the_selected_day() {
     let alice = account("alice.testnet");
     let mut contract = new_contract(1);
     register(&mut contract, &alice);
+    settle_as(&mut contract, 2);
     check_in_as(&mut contract, &alice, 2);
     assert_eq!(env::block_timestamp() / DAY_NS, 2);
     assert_eq!(contract.today_checkins().0, 1);
