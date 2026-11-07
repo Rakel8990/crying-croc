@@ -1,0 +1,114 @@
+name: NEAR testnet faucet probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Create one faucet-sponsored testnet account and read its balance
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+
+          export HOME="$RUNNER_TEMP/croc-near-probe-home"
+          export CARGO_HOME="$HOME/.cargo"
+          export XDG_CONFIG_HOME="$HOME/.config"
+          key_dir="$RUNNER_TEMP/croc-near-probe-keys"
+          mkdir -p "$key_dir" "$HOME"
+          chmod 700 "$HOME" "$key_dir"
+
+          redact_log() {
+            sed -E \
+              -e 's/ed25519:[[:alnum:]]+/[REDACTED_KEY]/g' \
+              -e 's/((private|secret)_key[" ]*:[" ]*)[^",} ]+/\1[REDACTED_KEY]/Ig' "$1"
+          }
+
+          show_error_and_fail() {
+            local label="$1"
+            local log_file="$2"
+            local status="$3"
+            echo "${label} failed (exit ${status}); sanitized diagnostic follows:"
+            if [[ -s "$log_file" ]]; then
+              redact_log "$log_file"
+            else
+              echo "No diagnostic text was returned."
+            fi
+            exit "$status"
+          }
+
+          installer_log="$RUNNER_TEMP/croc-near-probe-installer.log"
+          installer_url="https://github.com/near/near-cli-rs/releases/download/v0.31.1/near-cli-rs-installer.sh"
+          if ! curl --proto '=https' --tlsv1.2 -fsSL "$installer_url" | sh >"$installer_log" 2>&1; then
+            show_error_and_fail "near-cli-rs v0.31.1 installer" "$installer_log" 1
+          fi
+          export PATH="$CARGO_HOME/bin:$PATH"
+          if ! command -v near >/dev/null 2>&1; then
+            echo "near-cli-rs installer completed but did not place 'near' in the runner's temporary Cargo bin directory."
+            exit 1
+          fi
+
+          keygen_log="$RUNNER_TEMP/croc-near-probe-keygen.log"
+          if ! near account create-account fund-later use-auto-generation save-to-folder "$key_dir" >"$keygen_log" 2>&1; then
+            show_error_and_fail "temporary test key generation" "$keygen_log" 1
+          fi
+          key_file="$(find "$key_dir" -maxdepth 1 -type f -name '*.json' -print -quit)"
+          if [[ -z "$key_file" || ! -f "$key_file" ]]; then
+            echo "near-cli-rs did not create a credential JSON file in the runner temp directory."
+            exit 1
+          fi
+          public_key="$(jq -er '.public_key' "$key_file")"
+          if [[ ! "$public_key" =~ ^ed25519:[[:alnum:]]+$ ]]; then
+            echo "Generated credential file did not contain a valid Ed25519 public key."
+            exit 1
+          fi
+
+          account_id="croc-probe-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.testnet"
+          create_log="$RUNNER_TEMP/croc-near-probe-create.log"
+          if ! near account create-account sponsor-by-faucet-service "$account_id" \
+            use-manually-provided-public-key "$public_key" network-config testnet create \
+            >"$create_log" 2>&1; then
+            show_error_and_fail "faucet-sponsored testnet account creation" "$create_log" 1
+          fi
+
+          rpc_log="$RUNNER_TEMP/croc-near-probe-rpc-error.log"
+          rpc_body="$(jq -cn --arg account_id "$account_id" \
+            '{jsonrpc:"2.0",id:"croc-probe",method:"query",params:{request_type:"view_account",finality:"final",account_id:$account_id}}')"
+          if ! rpc_response="$(curl --proto '=https' --tlsv1.2 -fsS \
+            -H 'Content-Type: application/json' \
+            --data "$rpc_body" \
+            'https://rpc.testnet.near.org' 2>"$rpc_log")"; then
+            show_error_and_fail "hard-coded NEAR testnet RPC balance query" "$rpc_log" 1
+          fi
+          if ! balance_yocto="$(jq -er '.result.amount' <<<"$rpc_response" 2>/dev/null)"; then
+            rpc_error="$(jq -r '.error.cause.name // .error.message // "response did not contain result.amount"' <<<"$rpc_response" 2>/dev/null || true)"
+            echo "NEAR testnet RPC balance query failed: ${rpc_error:-response did not contain result.amount}"
+            exit 1
+          fi
+
+          printf 'account_id=%s\nbalance_yocto=%s\n' "$account_id" "$balance_yocto"
+
+      - name: Wipe temporary credentials and CLI state
+        if: always()
+        shell: bash
+        run: |
+          set +x
+          rm -rf -- \
+            "$RUNNER_TEMP/croc-near-probe-home" \
+            "$RUNNER_TEMP/croc-near-probe-keys" \
+            "$RUNNER_TEMP/croc-near-probe-installer.log" \
+            "$RUNNER_TEMP/croc-near-probe-keygen.log" \
+            "$RUNNER_TEMP/croc-near-probe-create.log" \
+            "$RUNNER_TEMP/croc-near-probe-rpc-error.log"

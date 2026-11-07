@@ -1,69 +1,68 @@
-# NEAR testnet deployment and test plan
+# CROC testnet deployment plan
 
-**Plan only. Nothing in this document deploys or changes a contract.** No deployment workflow is being added by this task. Keep every action on NEAR testnet; never put a mainnet account or key in these workflows.
+**Plan only. Do not deploy until the probe succeeds and the builder approves the next stage.** Every account, transaction, faucet request, and RPC endpoint in this plan is NEAR testnet only. No wallet key or recovery phrase is stored as a repository or GitHub secret.
 
-## Security design
+## Operating model
 
-- Future deployment, bot, status, gas-measurement, and key-removal workflows should use `workflow_dispatch` only. They must accept a `copy` (`fast` or `final`), `day_length_ns`, and `target`, and reject values that do not match the selected copy: fast is 300,000,000,000 ns and target 5; final is 86,400,000,000,000 ns and target 5. The test config (24-hour days, target 40) is for CI/replay, not a deployment copy.
-- Pin the GitHub runner to `main`, use a protected `near-testnet` GitHub Environment with required reviewer approval, and never accept a branch/ref or RPC URL from workflow inputs. Hard-code the testnet RPC endpoint. Keep `GITHUB_TOKEN` permissions minimal; only the results publishing job needs `contents: write`.
-- Store only the disposable testnet contract account IDs and their corresponding testnet private keys as GitHub Environment secrets/variables. The repo is public: no key, mnemonic, recovery phrase, signed transaction, or key-containing artifact may enter the repository or Actions output. Expose secret values only to the single transaction step through environment variables; do not pass them as command-line arguments. Disable shell tracing, never print the process environment, mask any derived sensitive values, and make scripts log only public account IDs, transaction hashes, receipt gas numbers, and sanitized errors. GitHub masking is a backup, not a reason to print secrets.
-- A runner should write temporary key material only under its temporary directory with restrictive permissions, delete it in an `always()` cleanup step, and never upload it as an artifact. Bot keys should be generated in memory during a single run, with bots funded as temporary subaccounts; do not persist those keys between runs.
-- Build the Wasm from the checked-out commit using the existing Rust toolchain setup. Use a locked Node runtime and exact `near-api-js` dependency version for transaction scripts; commit its lockfile when those scripts are implemented. Keep Rust off the builder's PC.
-- Contract initialization is a one-time race: deployment and `new()` must be actions in the same atomic NEAR batch transaction. Do not send a deploy transaction followed by a separate init transaction. A failed init must fail the entire batch so the account is not left with uninitialized code.
-- The contract account must hold enough testnet NEAR for its code and day records. Measure storage growth on testnet after settling a known number of days, calculate bytes per day, and budget for the intended operating horizon. State the storage-cost source and calculated amount in the run report. Fund **twice** the measured projected storage requirement (a 100% storage buffer), plus a separate transaction-fee reserve, before deleting any contract access key.
+- One self-contained `workflow_dispatch` workflow per copy, selected only from `main`. The only human action is **Actions → Run workflow** for the intended copy. The workflow must also reject runs unless `GITHUB_REF` is `refs/heads/main`.
+- Each run creates a fresh testnet account through NEAR CLI's faucet-sponsored account option. It generates the key in the runner, stores it only under `$RUNNER_TEMP` with restrictive permissions, and deletes the key directory in an `always()` cleanup step. Do not cache the home/credential directory or upload it as an artifact. Use `set +x`; never print a key, key file, environment dump, or recovery phrase. Do not use GitHub Secrets.
+- The public repository workflow may publish sanitized results with its narrowly scoped `GITHUB_TOKEN`; this token is not a NEAR key. Logs and results contain only public account IDs, non-secret transaction hashes, balances, status values, and real receipt measurements. Sanitize any CLI/RPC diagnostics before printing.
+- Pin the near-cli-rs version and installer URL. Keep the testnet RPC URL hard-coded in workflow/script code; do not accept a network, RPC, or source ref as an input.
+- Deploying Wasm and calling `new()` must be two ordered actions in **one atomic NEAR transaction**. If either action fails, the transaction must roll back; never deploy and initialize in separate transactions.
+- The contract account needs NEAR for deployed code and per-day records. The final workflow must measure storage growth per day on testnet, calculate the projected storage reserve and its 2× buffer, and verify adequate funding before deleting any account key.
 
-## Manual workflows to implement later
+## Stage 0: faucet probe (current step)
 
-Each workflow below is a design, not an existing workflow.
+`probe-testnet.yml` is a tiny manual workflow that installs pinned near-cli-rs in the GitHub runner, creates one fresh faucet-sponsored testnet account, queries its balance through the hard-coded testnet RPC, prints only the public account ID and balance, and removes the temporary key files. It does not deploy code. This probe must be run from `main`. A matching-SHA main CI report only verifies the repository's unit tests and Wasm build; it does not mean the probe itself has been run. The probe result must be read from its Actions run before any contract deployment workflow is written.
 
-1. **`deploy-testnet.yml` — manual deploy/init.** `workflow_dispatch` inputs are `copy`, `day_length_ns`, and `target`. Validate the exact pair, build `wasm32-unknown-unknown --release`, then use a testnet-only signer from the protected environment. Fund the selected, separate contract account before deployment. Submit one atomic batch transaction containing the Wasm deployment action followed by `new({"day_length_ns": ..., "target": ...})`; confirm the successful receipt and read back `day_length_ns()` and `target()`. Never deploy first and initialize in a second transaction, and never redeploy or reinitialize an existing account implicitly.
-2. **`testnet-operations.yml` — status, storage, bot, and real gas runs.** Inputs include the copy and an operation (`status`, `minimum-storage-check`, `measure-day-storage`, `bot-checkins`, `bot-farm`, or `settle-gas`). The status operation calls public views and prints today's check-ins, current streak, longest streak, emission pool, and treasury. Before regular use, register a fresh test account using exactly the `storage_balance_bounds().min` deposit, then have it check in, wait for settlement, claim, and verify the calls succeeded and the account's storage balance remains valid. This proves on testnet that minimum storage registration covers registration, check-in, and claim. The storage measurement operation records contract account `storage_usage` before and after settling a known number of days, calculates the per-day byte increase and required NEAR for the chosen horizon using the testnet storage price, and reports the funding target: 2× projected storage cost plus the separate transaction-fee reserve. Stop if the measured requirement is not funded; top up the testnet account before continuing. Bot operations create several temporary funded test accounts, pay their NEP-145 registration deposit, and submit check-ins. A bot-farm run reports the registered accounts, check-ins, successes/misses, and resulting balances without claiming one wallet is one person. The gas run records the actual `settle()` transaction hash and gas burnt from the transaction outcome and each receipt outcome, plus the block height and RPC/network. Never estimate gas from a local or sandbox measurement and label it as a real receipt.
-3. **`remove-testnet-keys.yml` — final cleanup only.** `workflow_dispatch` requires the exact contract account ID, copy name, and a confirmation string such as `DELETE_ALL_KEYS_FOR_THIS_TESTNET_ACCOUNT`. Validate the ID against the recorded testnet deployment result and require protected-environment approval. Before enabling this workflow, confirm that the contract has enough NEAR to cover the measured per-day storage requirement and the full 2× projected storage buffer plus transaction fees. At the very end, submit `delete_key` actions for the contract account's access keys, then query the access-key list and save a proof with the account ID, transaction hash, and empty key list. Do this only after funding, final contract tests, storage/minimum-deposit verification, gas/bot runs, and result publishing; deletion is irreversible for that signer. Do not print or publish any key.
+If the faucet-sponsored creation fails, stop. Do not build `testnet-fast.yml`, retry with a different account-creation route, or add a fallback that stores credentials elsewhere. Record the exact sanitized CLI/faucet error and the probe commit SHA first.
 
-Use only successfully finalized receipts. For real gas, retain per-receipt `gas_burnt` as well as transaction status; a failed or timed-out call is reported as a failure, never as a successful measurement. `settle()` is capped at seven elapsed days per call. For the requested 7-day/40-check-in-per-day test on the fast copy, check in 40 test accounts during each five-minute day, wait until the seventh day has elapsed, then call `settle()` and record the real transaction/receipt gas. This takes at least about 35 minutes of chain time, in addition to runner and transaction waits.
+## Stage 1: fast copy (write only after the probe succeeds)
 
-## Results handling
+Create one self-contained `testnet-fast.yml` with `workflow_dispatch` and no inputs that can change its scope: copy is hard-coded to fast, day length is 300 seconds (`300000000000` ns), and target is 5. It must:
 
-Each run should save a sanitized, machine-readable CSV/JSON report and a short text summary, named with the tested source SHA, copy, and run ID. Publish these files to a SHA-specific directory on `ci-logs` using a narrowly scoped `GITHUB_TOKEN`. Do not put secrets or raw environment/config dumps in results. Once reviewed, copy the verified outputs into `docs/testnet/` in a normal commit on `main`; the docs commit should link to the originating SHA and transaction explorer pages. Never overwrite a result from a different SHA.
+1. Check out `main`, verify the ref, install Rust and the `wasm32-unknown-unknown` target in Actions, and build the release Wasm.
+2. Create a fresh testnet contract account through the faucet-sponsored option. Keep its key only in the runner temp directory for the current run.
+3. Submit one atomic transaction with the Wasm deployment followed by `new({"day_length_ns": 300000000000, "target": 5})`. Check the finalized receipt, then read back and assert `day_length_ns()` and `target()`.
+4. Create five funded smoke-test accounts through the faucet (one claimer plus four supporting checkers). Each registers with exactly `storage_balance_bounds().min` and checks in on the same day. Five accounts are needed because this copy's target is 5; a single checker would earn no reward. Wait by polling testnet block timestamps until the next five-minute day, call `settle()`, and have the claimer call `claim()`.
+5. Read the claimer and derived escrow (`escrow.` plus contract account ID) balances before and after claiming. Assert that the claim return amount equals the claimer balance increase and escrow decrease, and that the settled day met target. Then print today's check-ins, current streak, longest streak, pool, and treasury.
+6. Read gas from the actual finalized transaction and receipt outcomes. Save only sanitized JSON/CSV and a short summary, with source SHA and Actions run ID, under a SHA/run-specific path on `ci-logs`. Copy the reviewed, sanitized output to `docs/testnet/` in a normal commit on `main`.
+7. In an `always()` step, delete the contract and smoke-test key files and the temporary CLI home. The fast contract is immutable and has no admin or upgrade method. Its private key is discarded when the run ends; the account's public access-key record remains on testnet.
 
-## Exact human actions (three)
+No bot-farm script, final-copy workflow, or key-deletion workflow is part of this stage.
 
-1. **Create and fund two disposable testnet contract accounts.** Open [MyNearWallet testnet](https://testnet.mynearwallet.com/) → **Create account** → **Get started**, create the fast account, then use the wallet's **Add a Custom Address → Reserve my Account ID** flow for a separate final account if named account creation is available on testnet. Secure each key in the wallet; never paste a recovery phrase into chat, Actions, or this repository. Then open [NEAR testnet faucet](https://near-faucet.io/) → enter each public account ID in **Wallet Address** → choose an amount → **Request**. Faucet UI labels or availability may change; if it cannot fund the accounts, stop rather than substitute mainnet funds. This cannot safely be automated end-to-end because account creation/faucet authorization and any anti-abuse checks are controlled by the wallet/faucet, and Actions cannot securely write a newly generated private key into GitHub Secrets.
-2. **Add the two disposable identities and keys to the protected GitHub Environment.** In the repository, click **Settings → Environments → New environment** (or select `near-testnet`), add required reviewers, then use **Add secret** for all four values: `CROC_FAST_ACCOUNT_ID`, `CROC_FAST_PRIVATE_KEY`, `CROC_FINAL_ACCOUNT_ID`, and `CROC_FINAL_PRIVATE_KEY`. The exact path is **Repository → Settings → Environments → near-testnet → Add secret**. Account IDs are not confidential, but storing them as secrets keeps the deployment configuration together. This handoff must be manual because the workflow is deliberately not allowed to display a secret or call GitHub's secret-writing interface; GitHub documents creating secrets through this UI and passing them explicitly to a workflow.
-3. **Dispatch each later run and approve only the intended testnet action.** Open **Repository → Actions → `Deploy CROC to NEAR testnet` → Run workflow**, select branch `main`, select `fast` or `final`, and enter the matching day length and target. Review and approve the `near-testnet` environment deployment when GitHub prompts. Run the operations workflow through **Actions → `CROC testnet operations` → Run workflow**. Run key removal only as the final action through **Actions → `Remove CROC testnet keys` → Run workflow**, and type the full confirmation string for the exact account. These clicks remain manual by design: they are the human go/no-go gate for spending testnet funds, running bot activity, and irreversibly removing the last access keys.
+## Later final-copy design (not to implement yet)
+
+The final copy will use a separate, fresh faucet-sponsored testnet account and one self-contained manual workflow. It will hard-code 24-hour days (`86400000000000` ns) and target 5, build Wasm, atomically deploy and initialize, run the approved smoke checks, record results, and then delete the account's access keys as the final chain action in that same run. Before deletion it must verify all test receipts and results are saved, measure and fund contract storage with a 2× projected storage buffer plus transaction fees, and confirm the exact account ID. The private key stays in the runner temp directory only and is removed in `always()` cleanup whether the run succeeds or fails. No key deletion occurs in the fast-copy stage.
 
 ## Risks and handling
 
 | Risk | Handling |
 |---|---|
-| Testnet key leaks through logs, artifacts, process arguments, or public commits | Disposable testnet-only accounts; GitHub Environment secrets; explicit per-step env exposure; no shell tracing or secret output; sanitize logs; no key artifacts; cleanup temporary files; review every workflow diff before enabling it. Never use mainnet keys. |
-| Public repository code or an untrusted ref can access deployment secrets | Dispatch only from `main`; enforce allowed branches on the protected `near-testnet` Environment; require a reviewer; no secrets on pull-request or push workflows; do not let inputs select code refs or RPC endpoints. |
-| Faucet limits, cooldown, or service outage | Request funds manually for the two contract accounts; treat the faucet as best effort. If funding is insufficient, pause. Do not automate retries or use mainnet funds. |
-| NEAR RPC/faucet rate limits or congestion | Keep bot concurrency low, use bounded exponential backoff only for read calls and explicitly retryable submissions, avoid duplicate transactions, save transaction hashes, and stop on ambiguous transaction status to avoid double actions. |
-| Accidentally deploying the wrong settings or overwriting a live testnet copy | Allow only the two exact copy settings; read back immutable views after initialization; require a new disposable account for replacement rather than silently redeploying. |
-| Key deletion locks the contract account permanently | Separate, final manual workflow; exact account ID and typed confirmation; protected reviewer approval; perform only after all tests/results/proofs; verify the access-key list is empty immediately after the deletion receipt. |
-| Testnet gas/faucet results are not mainnet guarantees | Label all results as testnet observations with timestamp, SHA, network, and transaction/receipt references. |
+| Generated private key appears in terminal output, process logs, or artifacts | Generate it directly on the ephemeral runner, use a temp-only credentials directory, disable shell tracing, redirect CLI output to temp files, print only allow-listed public fields, redact key-shaped strings from diagnostics, upload no key files, and wipe temp credentials in `always()`. |
+| Public code or a dispatch from the wrong branch runs | Reject unless the workflow ref is exactly `main`; no user-controlled ref/RPC inputs; require a human to click the manual dispatch; review the workflow diff before pushing. There are no NEAR secrets in GitHub. |
+| Faucet limit, rate limit, or outage | One probe request only. On failure, stop and report the exact sanitized error; do not automatically retry or switch to another account/key method. |
+| Faucet creates an account but the runner fails before key cleanup | Use a job-level `always()` cleanup; GitHub-hosted runners are disposable. The account may remain on testnet with an unusable public key, but no private key is retained. |
+| Wrong configuration or partial initialization | Hard-code the copy settings; one transaction contains both deploy and `new()`; assert read-back values before any smoke calls. |
+| Smoke test does not meet target and therefore has no positive reward | Use exactly five registered checkers on the fast copy and assert the settled day succeeded before interpreting the claim amount. |
+| Testnet congestion and variable gas | Label only actual finalized receipt `gas_burnt` values as measurements, include transaction hashes/block height, and report failed or ambiguous transactions without retrying them blindly. |
+| Unfunded or underfunded contract storage | Measure per-day storage usage on testnet, compute reserve for the planned horizon, fund 2× that projected storage cost plus a separate transaction-fee reserve, and verify balance before any final key deletion. |
 
-## Estimated GitHub Actions time
+## Estimated Actions time
 
-| Order | Work | Approximate Actions time |
+| Order | Work | Approximate time |
 |---:|---|---:|
-| 1 | Build Wasm and validate dispatch inputs | 2–5 minutes |
-| 2 | Deploy and initialize one selected copy; read back parameters | 2–5 minutes |
-| 3 | Verify minimum storage deposit through registration, check-in, settlement, and claim | 2–5 minutes plus the next fast-copy day boundary |
-| 4 | Measure per-day contract storage and calculate/fund 2× storage buffer | 2–5 minutes, plus any manual faucet top-up time |
-| 5 | Status view calls | Under 1 minute |
-| 6 | Create/fund temporary bots, register, and run one-day check-ins | 3–10 minutes, depending on RPC confirmation |
-| 7 | Bot-farm run and result collection | 5–20 minutes, depending on account count and throttling |
-| 8 | Seven-day real settle-gas run with 40 check-ins each day on the fast copy | At least 35 minutes of chain time, typically 40–55 minutes total |
-| 9 | Publish sanitized results to `ci-logs`; later copy reviewed results to `docs/` | 1–3 minutes for publish; docs copy is a separate commit and ordinary CI run |
-| 10 | Final explicit key deletion and empty-key-list proof, after funding check | 2–5 minutes |
+| 0 | Install CLI and run the faucet probe | 2–5 minutes |
+| 1 | Build Wasm and create the fast-copy account | 2–5 minutes |
+| 2 | Atomic deploy/init and parameter read-back | 1–3 minutes |
+| 3 | Five smoke check-ins, wait for the five-minute boundary, settle, claim, and verify balances | At least 5–8 minutes |
+| 4 | Write sanitized output to `ci-logs` and commit reviewed results under `docs/testnet/` | 1–3 minutes |
+| Later | Final-copy test run and final key deletion | Not estimated until the probe and fast stage are reviewed |
 
-These are estimates, not measured run durations. Faucet/account setup is human time and is not included in Actions minutes.
+These are estimates, not measured durations. Faucet and RPC delays may make runs longer.
 
 ## References
 
-- [NEAR CLI guide: testnet faucet account creation and contract deploy/init](https://github.com/near/near-cli-rs/blob/main/docs/GUIDE.en.md)
-- [near-api-js: Node transaction and contract-call library](https://github.com/near/near-api-js)
-- [NEAR testnet faucet](https://near-faucet.io/)
-- [GitHub Docs: create and use Actions secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets)
+- [near-cli-rs v0.31.1 release and prebuilt installer](https://github.com/near/near-cli-rs/releases/tag/v0.31.1)
+- [near-cli-rs guide: faucet-sponsored account creation](https://github.com/near/near-cli-rs/blob/main/docs/GUIDE.en.md)
+- [NEAR JSON-RPC testnet endpoint](https://rpc.testnet.near.org)
