@@ -1,0 +1,25 @@
+name: EXPERIMENTAL - NEAR Sandbox settle gas
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  experimental-sandbox-gas:
+    name: Experimental sandbox settle gas test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Install stable Rust and WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Cache Rust dependencies and build artifacts
+        uses: Swatinem/rust-cache@v2
+      - name: Build contract Wasm
+        run: cargo build --target wasm32-unknown-unknown --release
+      - name: Run experimental sandbox gas test
+        run: cargo test --test settle_gas -- --nocapture
