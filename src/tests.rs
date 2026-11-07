@@ -346,3 +346,115 @@ fn supply_matches_treasury_escrow_and_holders_after_day_claim_and_transfer() {
             + contract.balance_of(bob).0
     );
 }
+
+#[test]
+fn sixty_day_replay_matches_independent_reference_and_simulation_csv() {
+    const PARTICIPANTS: usize = 60;
+    const TARGET: u32 = 40;
+
+    let users: Vec<AccountId> = (0..PARTICIPANTS)
+        .map(|index| account(&format!("user{index}.testnet")))
+        .collect();
+    set_context(&account("owner.testnet"), 0);
+    let mut contract = new_contract(TARGET);
+    for user in &users {
+        register(&mut contract, user);
+    }
+
+    // The reference is calculated here from RULES.md's integer formulas;
+    // the checked-in CSV is the simulation script's independently produced output.
+    let schedule: Vec<(u64, u32)> = include_str!("../docs/simulation/replay_schedule.csv")
+        .lines()
+        .skip(1)
+        .map(|line| {
+            let mut fields = line.split(',');
+            (fields.next().unwrap().parse().unwrap(), fields.next().unwrap().parse().unwrap())
+        })
+        .collect();
+    let simulation: Vec<Vec<String>> = include_str!("../docs/simulation/results/replay_reference.csv")
+        .lines()
+        .skip(1)
+        .map(|line| line.split(',').map(str::to_owned).collect())
+        .collect();
+    assert_eq!(schedule.len(), 60);
+    assert_eq!(simulation.len(), 60);
+
+    let mut pool = 700_000_000 * ONE_TOKEN;
+    let mut treasury = 300_000_000 * ONE_TOKEN;
+    let mut escrow = 0_u128;
+    let mut holder_balances = vec![0_u128; PARTICIPANTS];
+    let mut unresolved = vec![None::<u128>; PARTICIPANTS];
+    let (mut streak, mut longest) = (0_u64, 0_u64);
+
+    for (day_index, (day_number, count)) in schedule.iter().copied().enumerate() {
+        assert_eq!(day_number, day_index as u64 + 1);
+        assert!(count as usize <= PARTICIPANTS);
+
+        for participant in 0..count as usize {
+            if let Some(reward) = unresolved[participant].take() {
+                escrow -= reward;
+                holder_balances[participant] += reward;
+            }
+            check_in_as(&mut contract, &users[participant], day_index as u64);
+            unresolved[participant] = Some(0);
+        }
+
+        let mut pot = 0_u128;
+        let mut treasury_minted = 0_u128;
+        let mut checker_minted = 0_u128;
+        let mut burned = 0_u128;
+        let successful = count >= TARGET;
+        let reward_per_checker = if successful {
+            pot = pool / 200;
+            treasury_minted = pot / 10;
+            let checker_part = pot * 90 / 100;
+            let per_checker = checker_part / u128::from(count);
+            checker_minted = per_checker * u128::from(count);
+            pool -= pot;
+            treasury += treasury_minted;
+            escrow += checker_minted;
+            streak += 1;
+            longest = longest.max(streak);
+            per_checker
+        } else {
+            burned = treasury * 5 / 100;
+            treasury -= burned;
+            streak = 0;
+            0
+        };
+        for participant in 0..count as usize {
+            unresolved[participant] = Some(reward_per_checker);
+        }
+
+        settle_as(&mut contract, day_index as u64 + 1);
+
+        let reference_supply = treasury + escrow + holder_balances.iter().sum::<u128>();
+        assert!(reference_supply <= 1_000_000_000 * ONE_TOKEN);
+        assert_eq!(contract.emission_pool().0, pool, "pool after day {day_number}");
+        assert_eq!(contract.treasury().0, treasury, "treasury after day {day_number}");
+        assert_eq!(contract.total_supply().0, reference_supply, "supply after day {day_number}");
+        assert_eq!(contract.streak().0, u128::from(streak), "streak after day {day_number}");
+        assert_eq!(contract.longest_streak().0, u128::from(longest), "longest streak after day {day_number}");
+        assert_eq!(
+            contract.total_supply().0,
+            contract.treasury().0
+                + contract.balance_of(account("rewards.croc")).0
+                + users.iter().map(|user| contract.balance_of(user.clone()).0).sum::<u128>(),
+            "supply components after day {day_number}"
+        );
+
+        let csv = &simulation[day_index];
+        assert_eq!(csv[0].parse::<u64>().unwrap(), day_number);
+        assert_eq!(csv[1].parse::<u32>().unwrap(), count);
+        assert_eq!(csv[2].parse::<u8>().unwrap(), u8::from(successful));
+        assert_eq!(csv[3].parse::<u128>().unwrap(), pot);
+        assert_eq!(csv[4].parse::<u128>().unwrap(), treasury_minted);
+        assert_eq!(csv[5].parse::<u128>().unwrap(), checker_minted);
+        assert_eq!(csv[6].parse::<u128>().unwrap(), burned);
+        assert_eq!(csv[7].parse::<u128>().unwrap(), pool);
+        assert_eq!(csv[8].parse::<u128>().unwrap(), treasury);
+        assert_eq!(csv[9].parse::<u128>().unwrap(), reference_supply);
+        assert_eq!(csv[10].parse::<u64>().unwrap(), streak);
+        assert_eq!(csv[11].parse::<u64>().unwrap(), longest);
+    }
+}
