@@ -1,7 +1,7 @@
 use near_workspaces::types::NearToken;
 use serde_json::json;
 
-const DAY_LENGTH_NS: u64 = 300_000_000_000;
+const DAY_LENGTH_NS: u64 = 86_400_000_000_000;
 const CHECKINS_PER_DAY: usize = 40;
 const DAYS: usize = 7;
 const MAX_SETTLE_GAS: u64 = 300_000_000_000_000;
@@ -55,11 +55,11 @@ async fn settle_gas_for_seven_days_with_forty_checkins_per_day(
                 .into_result()?;
         }
 
-        // The contract uses a five-minute test day. Advance in short chunks
+        // Use the documented 24-hour test day. Advance in six-hour chunks
         // until the view resets, keeping the 40 check-ins within one day.
         let mut next_day_started = false;
-        for _ in 0..20 {
-            worker.fast_forward(30).await?;
+        for _ in 0..5 {
+            worker.fast_forward(21_600).await?;
             let today_checkins: String = contract.view("today_checkins").await?.json()?;
             if today_checkins == "0" {
                 next_day_started = true;
