@@ -1,15 +1,10 @@
 # CROC contract progress
 
-- **Done:** Project skeleton and CI workflow committed as `f4078ba`.
-- **Done:** Added the supplied white paper as `WHITEPAPER.md`; `RULES.md` remains authoritative for contract behavior.
-- **In progress:** Step 1 — test-first coverage has been expanded and is awaiting GitHub Actions. Tests have not been run locally; this PC has no Cargo, and it must not be installed here.
-- **Failing:** The prior Actions run stopped at compile time because the empty contract lacks methods used by the tests (31 compiler errors were reported). The new and adjusted tests have not yet run in Actions.
-- **Next step:** Push the latest local commit and wait for the GitHub Actions result for the expanded tests before writing contract logic.
-
-- **Done:** Step 0 synchronized WHITEPAPER.md to the supplied v5 text and appended the requested authority and workflow rules to AGENTS.md.
-- **Done:** Step 1 reviewed both requested skills and attempted each once. NEAR skill: not installed because its installer could not start (`Python was not found`). Superpowers: not installed because the specified `.codex/INSTALL.md` returned 404; the official Codex app path requires a Plugins-panel click.
-- **Done:** Step 2 workflow pushed in `e510c49b7ecf775c37f84cb8e32874e6cffbee7f`; its CI log was read from the `ci-logs` branch and the SHA matched. The Actions API and raw URL both returned 404, so the log was retrieved with a read-only Git fetch instead.
-- **Failing:** On `e510c49b7ecf775c37f84cb8e32874e6cffbee7f`, `cargo test` exited 101 with 39 compile errors because the empty contract has no test API methods. `cargo build --target wasm32-unknown-unknown --release` completed successfully. This is the expected red skeleton state; no tests are reported as passing.
-- **Done:** Step 3 compile-only stubs were pushed as `8c60263553cb649f376487fd54002df5f4fba1d5`. CI compiled and ran 16 tests; 9 failed at TODO stubs. Seven broad `#[should_panic]` cases were labeled `ok` because any stub panic satisfies them, so these are not behavioral verification. The Wasm build completed. No test is reported as passing.
-- **In progress:** Step 4 state and views, fix attempt 1/6. CI for `0caa33f15512329d6c453115ddcb9dc2dc07b8a3` failed to compile because the legacy token account map returns `Option<u128>`, making two `.copied()` calls invalid; removing them.
-- **Next:** Push the state/views fix and inspect the matching-SHA Actions log before proceeding to settle.
+- **Done:** Step 0 — synchronized `WHITEPAPER.md`, appended the requested authority and workflow rules to `AGENTS.md`, and committed as `256cd97`.
+- **Done:** Step 1 — reviewed and attempted each requested skill once. NEAR skill install did not start because Python was unavailable. Superpowers was not installed: its specified install file returned 404 and the official Codex app path requires a Plugins-panel click.
+- **Done:** Step 2 — CI log workflow committed and pushed as `e510c49b7ecf775c37f84cb8e32874e6cffbee7f`. The `ci-logs` branch wrote the matching-SHA report. GitHub's Actions API and raw file URL returned 404, so reports were retrieved by read-only Git fetch.
+- **Done:** Step 3 — panic API stubs compiled and ran in Actions at `8c60263553cb649f376487fd54002df5f4fba1d5`. The log showed 9 TODO-stub failures; 7 broad `#[should_panic]` tests were labeled `ok` because any panic satisfied them, which is not behavioral verification. Wasm build completed.
+- **Done:** State and views were added. The first CI attempt (`0caa33f`) found two invalid `.copied()` calls; they were removed.
+- **Failing:** CI for `296488f78815f98f19ee5cb7f214c8c2fcaba44f` compiled and ran all 16 tests, but 9 still failed at intentional `storage_deposit` or `settle` stubs. Seven broad panic tests were labeled `ok` due to TODO panics. Wasm build completed. No test is reported as passing.
+- **In progress:** Settlement implementation (max 7 completed days per call, ordered records, exact pool and treasury math, supply cap, streak updates, and events). It has not been run in Actions yet.
+- **Next:** Commit and push settlement; inspect the report for its exact commit SHA before adding check-in logic.
