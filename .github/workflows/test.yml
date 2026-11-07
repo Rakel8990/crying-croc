@@ -1,6 +1,12 @@
 name: Rust tests and contract build
 
-on: [push]
+on:
+  push:
+    branches-ignore:
+      - ci-logs
+
+permissions:
+  contents: write
 
 jobs:
   test-and-build:
@@ -14,7 +20,60 @@ jobs:
           targets: wasm32-unknown-unknown
       - name: Cache Rust dependencies and build artifacts
         uses: Swatinem/rust-cache@v2
-      - name: Run tests
-        run: cargo test
-      - name: Build WebAssembly contract
-        run: cargo build --target wasm32-unknown-unknown --release
+      - name: Run tests and build while saving output
+        id: cargo
+        shell: bash
+        run: |
+          set +e
+          output_file="$RUNNER_TEMP/croc-cargo-output.log"
+          : > "$output_file"
+
+          cargo test 2>&1 | tee -a "$output_file"
+          test_status=${PIPESTATUS[0]}
+
+          cargo build --target wasm32-unknown-unknown --release 2>&1 | tee -a "$output_file"
+          build_status=${PIPESTATUS[0]}
+
+          if [ "$test_status" -eq 0 ] && [ "$build_status" -eq 0 ]; then
+            conclusion="SUCCESS (cargo test: 0, cargo build: 0)"
+          else
+            conclusion="FAIL (cargo test: $test_status, cargo build: $build_status)"
+          fi
+
+          echo "CROC_CI_CONCLUSION=$conclusion" >> "$GITHUB_ENV"
+          if [ "$test_status" -ne 0 ] || [ "$build_status" -ne 0 ]; then
+            exit 1
+          fi
+      - name: Publish the latest log on the ci-logs orphan branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_file="$RUNNER_TEMP/croc-cargo-output.log"
+          report_file="$RUNNER_TEMP/ci-latest.txt"
+          log_repo="$RUNNER_TEMP/croc-ci-log-repo-$GITHUB_RUN_ID"
+
+          {
+            echo "Commit SHA: $GITHUB_SHA"
+            echo "UTC time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo "Final conclusion: ${CROC_CI_CONCLUSION:-FAIL}"
+            echo "Last 300 lines of Cargo output:"
+            if [ -f "$output_file" ]; then
+              tail -n 300 "$output_file"
+            else
+              echo "Cargo output was not created."
+            fi
+          } > "$report_file"
+
+          mkdir -p "$log_repo"
+          cp "$report_file" "$log_repo/ci-latest.txt"
+          cd "$log_repo"
+          git init --quiet --initial-branch=ci-logs
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ci-latest.txt
+          git commit --quiet -m "Update CI log for $GITHUB_SHA"
+          auth_header="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w 0)"
+          git -c "http.extraheader=AUTHORIZATION: basic $auth_header" push --force "https://github.com/$GITHUB_REPOSITORY.git" HEAD:ci-logs
