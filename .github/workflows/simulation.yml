@@ -1,0 +1,46 @@
+name: 60-day CROC simulation
+
+on:
+  workflow_run:
+    workflows: ["Rust tests and contract build"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  simulate:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    env:
+      SIMULATION_SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - name: Check out the tested main commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          path: source
+      - name: Run 60-day simulations and create PNG charts
+        working-directory: source
+        run: python3 scripts/simulate_60_days.py --output-dir "$RUNNER_TEMP/croc-simulation"
+      - name: Check out the ci-logs branch
+        uses: actions/checkout@v4
+        with:
+          ref: ci-logs
+          path: ci-logs
+      - name: Publish CSV and PNG results to ci-logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          destination="ci-logs/simulations/$SIMULATION_SHA"
+          mkdir -p "$destination"
+          cp "$RUNNER_TEMP/croc-simulation/"* "$destination/"
+          git -C ci-logs config user.name "github-actions[bot]"
+          git -C ci-logs config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C ci-logs add "simulations/$SIMULATION_SHA"
+          if git -C ci-logs diff --cached --quiet; then
+            echo "Simulation output for $SIMULATION_SHA already exists."
+          else
+            git -C ci-logs commit -m "Add 60-day simulation for $SIMULATION_SHA"
+            git -C ci-logs push origin HEAD:ci-logs
+          fi
