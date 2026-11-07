@@ -29,6 +29,16 @@ fn set_context(who: &AccountId, day: u64) {
     testing_env!(context.build());
 }
 
+fn set_transfer_context(who: &AccountId, day: u64) {
+    let mut context = VMContextBuilder::new();
+    context
+        .predecessor_account_id(who.clone())
+        .current_account_id(account("croc.testnet"))
+        .block_timestamp(day * DAY_NS)
+        .attached_deposit(NearToken::from_yoctonear(1));
+    testing_env!(context.build());
+}
+
 fn new_contract(target: u32) -> Contract {
     Contract::new(DAY_NS, target)
 }
@@ -326,7 +336,7 @@ fn supply_matches_treasury_escrow_and_holders_after_day_claim_and_transfer() {
 
     // Day 1 has no check-ins, so settling it burns exactly five percent.
     settle_as(&mut contract, 2);
-    set_context(&alice, 2);
+    set_transfer_context(&alice, 2);
     contract.ft_transfer(bob.clone(), contract.balance_of(alice.clone()), None);
     assert_eq!(
         contract.total_supply().0,
