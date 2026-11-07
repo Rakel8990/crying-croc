@@ -59,8 +59,13 @@ async fn settle_gas_for_seven_days_with_forty_checkins_per_day(
         // until the view resets, keeping the 40 check-ins within one day.
         let mut next_day_started = false;
         for _ in 0..5 {
+            let timestamp_before = worker.view_block().await?.timestamp();
             worker.fast_forward(21_600).await?;
+            let timestamp_after = worker.view_block().await?.timestamp();
             let today_checkins: String = contract.view("today_checkins").await?.json()?;
+            println!(
+                "day {day}: sandbox timestamp {timestamp_before} -> {timestamp_after}; today_checkins={today_checkins}"
+            );
             if today_checkins == "0" {
                 next_day_started = true;
                 break;
