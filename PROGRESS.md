@@ -6,5 +6,6 @@
 - **Done:** Step 3 — panic API stubs compiled and ran in Actions at `8c60263553cb649f376487fd54002df5f4fba1d5`. The log showed 9 TODO-stub failures; 7 broad `#[should_panic]` tests were labeled `ok` because any panic satisfied them, which is not behavioral verification. Wasm build completed.
 - **Done:** State and views were added. The first CI attempt (`0caa33f`) found two invalid `.copied()` calls; they were removed.
 - **Failing:** CI for `296488f78815f98f19ee5cb7f214c8c2fcaba44f` compiled and ran all 16 tests, but 9 still failed at intentional `storage_deposit` or `settle` stubs. Seven broad panic tests were labeled `ok` due to TODO panics. Wasm build completed. No test is reported as passing.
-- **In progress:** Settlement implementation (max 7 completed days per call, ordered records, exact pool and treasury math, supply cap, streak updates, and events). It has not been run in Actions yet.
-- **Next:** Commit and push settlement; inspect the report for its exact commit SHA before adding check-in logic.
+- **Done:** Settlement was pushed as `723246809a6fca6e7b7ebb606c85324110142d0d`; the matching CI log shows `cargo test` ran with 7 failures and `cargo build` completed. CI listed the idempotent-settle and empty-day burn assertions as `ok`; the broader red result is due to remaining registration/check-in stubs. No overall test-suite success is claimed.
+- **In progress:** Check-in implementation: backlog and registration guards, daily uniqueness, reward resolution before today's record, and events. Awaiting CI.
+- **Next:** Push check-in and inspect the matching-SHA report before implementing claim.

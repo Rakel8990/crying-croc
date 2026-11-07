@@ -100,7 +100,39 @@ impl Contract {
     }
 
     pub fn check_in(&mut self) {
-        panic!("TODO stub: check_in")
+        let account_id = env::predecessor_account_id();
+        let current_day = env::block_timestamp() / self.day_length_ns;
+        assert!(
+            self.next_day_to_settle >= current_day,
+            "settlement backlog must be cleared before check-in"
+        );
+        assert!(
+            self.token.accounts.contains_key(&account_id),
+            "account must register token storage before check-in"
+        );
+        if let Some(progress) = self.account_progress.get(&account_id) {
+            assert_ne!(
+                progress.last_checkin_day, current_day,
+                "account has already checked in today"
+            );
+        }
+
+        self.resolve_pending_reward(&account_id, "check_in");
+
+        let count = self.checkin_counts.get(&current_day).copied().unwrap_or(0);
+        let new_count = count.checked_add(1).expect("daily check-in count overflow");
+        self.checkin_counts.insert(current_day, new_count);
+        self.account_progress.insert(
+            account_id.clone(),
+            AccountProgress {
+                last_checkin_day: current_day,
+                resolved: false,
+            },
+        );
+        env::log_str(&format!(
+            "EVENT_JSON:{{\"standard\":\"croc\",\"version\":\"1.0.0\",\"event\":\"check_in\",\"data\":[{{\"account_id\":\"{}\",\"day\":{},\"day_count\":{}}}]}}",
+            account_id, current_day, new_count
+        ));
     }
 
     pub fn settle(&mut self) {
@@ -169,6 +201,45 @@ impl Contract {
 }
 
 impl Contract {
+    fn resolve_pending_reward(&mut self, account_id: &AccountId, trigger: &str) -> Balance {
+        let pending = self
+            .account_progress
+            .get(account_id)
+            .map(|progress| (progress.last_checkin_day, progress.resolved));
+        let Some((day, resolved)) = pending else {
+            return 0;
+        };
+        if resolved {
+            return 0;
+        }
+
+        let reward = self
+            .day_settlements
+            .get(&day)
+            .expect("the check-in day must be settled before reward resolution")
+            .reward_per_checker;
+        if reward > 0 {
+            self.token.internal_transfer(
+                &self.reward_escrow_account_id,
+                account_id,
+                reward,
+                Some("CROC check-in reward".to_string()),
+            );
+        }
+        self.account_progress.insert(
+            account_id.clone(),
+            AccountProgress {
+                last_checkin_day: day,
+                resolved: true,
+            },
+        );
+        env::log_str(&format!(
+            "EVENT_JSON:{{\"standard\":\"croc\",\"version\":\"1.0.0\",\"event\":\"claim\",\"data\":[{{\"account_id\":\"{}\",\"day\":{},\"amount\":\"{}\",\"trigger\":\"{}\"}}]}}",
+            account_id, day, reward, trigger
+        ));
+        reward
+    }
+
     fn settle_one_day(&mut self, day: u64) {
         assert!(
             !self.day_settlements.contains_key(&day),
