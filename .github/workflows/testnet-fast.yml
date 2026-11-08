@@ -24,10 +24,6 @@ jobs:
       CROC_SOURCE_SHA: ${{ github.sha }}
       CROC_RUN_ID: ${{ github.run_id }}
       CROC_RUN_ATTEMPT: ${{ github.run_attempt }}
-      CROC_RUN_DIR: ${{ runner.temp }}/croc-fast-run
-      CROC_KEY_DIR: ${{ runner.temp }}/croc-fast-keys
-      CROC_CLI_HOME: ${{ runner.temp }}/croc-fast-cli-home
-      CROC_NEAR_BIN: ${{ runner.temp }}/croc-fast-cli-home/bin/near
 
     steps:
       - name: Check out the selected main commit
@@ -47,6 +43,15 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+
+      - name: Set temporary runner paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'CROC_RUN_DIR=%s/croc-fast-run\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'CROC_KEY_DIR=%s/croc-fast-keys\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'CROC_CLI_HOME=%s/croc-fast-cli-home\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          printf 'CROC_NEAR_BIN=%s/croc-fast-cli-home/bin/near\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
 
       - name: Install Rust, build the Wasm, and install pinned near-cli-rs
         shell: bash
