@@ -48,10 +48,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf 'CROC_RUN_DIR=%s/croc-fast-run\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
-          printf 'CROC_KEY_DIR=%s/croc-fast-keys\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
-          printf 'CROC_CLI_HOME=%s/croc-fast-cli-home\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
-          printf 'CROC_NEAR_BIN=%s/croc-fast-cli-home/bin/near\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+          {
+            printf 'CROC_RUN_DIR=%s/croc-fast-run\n' "$RUNNER_TEMP"
+            printf 'CROC_KEY_DIR=%s/croc-fast-keys\n' "$RUNNER_TEMP"
+            printf 'CROC_CLI_HOME=%s/croc-fast-cli-home\n' "$RUNNER_TEMP"
+            printf 'CROC_NEAR_BIN=%s/croc-fast-cli-home/bin/near\n' "$RUNNER_TEMP"
+          } >> "$GITHUB_ENV"
 
       - name: Install Rust, build the Wasm, and install pinned near-cli-rs
         shell: bash
