@@ -222,12 +222,7 @@ jobs:
           wasm_file="$GITHUB_WORKSPACE/target/wasm32-unknown-unknown/release/crying_croc.wasm"
           [[ -s "$wasm_file" ]] || fail_step 'release Wasm file assertion' 1
           wasm_sha256_hex="$(sha256sum "$wasm_file" | awk '{print $1}')"
-          wasm_sha256_base58="$(python3 -c 'import sys
-raw=bytes.fromhex(sys.argv[1]); alphabet="123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-n=int.from_bytes(raw,"big"); output=""
-while n:
-    n,remainder=divmod(n,58); output=alphabet[remainder]+output
-print("1"*(len(raw)-len(raw.lstrip(bytes([0]))))+output)' "$wasm_sha256_hex")"
+          wasm_sha256_base58="$(python3 -c 'import sys; exec("raw=bytes.fromhex(sys.argv[1])\nalphabet=\"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz\"\nn=int.from_bytes(raw,\"big\")\noutput=\"\"\nwhile n:\n    n,remainder=divmod(n,58)\n    output=alphabet[remainder]+output\nprint(\"1\"*(len(raw)-len(raw.lstrip(bytes([0]))))+output)")' "$wasm_sha256_hex")"
 
           deploy_hash="$(sign_and_send deploy-init "$contract_id" "$contract_key" contract deploy "$contract_id" use-file "$wasm_file" with-init-call new json-args "{\"day_length_ns\":${CROC_DAY_LENGTH_NS},\"target\":${CROC_TARGET}}" prepaid-gas '100 TGas' attached-deposit '0 NEAR')"
           tx_body="$(jq -cn --arg hash "$deploy_hash" --arg signer "$contract_id" '{jsonrpc:"2.0",id:"croc-final-tx",method:"EXPERIMENTAL_tx_status",params:[$hash,$signer]}')"
