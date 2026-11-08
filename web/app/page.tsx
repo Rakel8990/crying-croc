@@ -18,7 +18,7 @@ const mechanics = [
 export default function Home() {
   return (
     <main>
-      <div className="video-overlay" /><div className="noise" /><div className="ticker-field" aria-hidden="true"><span>$CROC</span><span>NEAR</span><span>$CROC</span><span>NEAR</span><span>$CROC</span><span>NEAR</span></div>
+      <div className="video-overlay" /><div className="noise" /><div className="ticker-field" aria-hidden="true"><span>$CROC</span><span>$NEAR</span><span>$CROC</span><span>$NEAR</span><span>$CROC</span><span>$NEAR</span></div>
       <video className="background-video" autoPlay muted loop playsInline preload="auto" aria-hidden="true"><source src="https://files.catbox.moe/2pu9xu.mp4" type="video/mp4" /></video>
       <div className="site-shell">
         <header className="topbar">
