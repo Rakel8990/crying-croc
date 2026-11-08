@@ -19,7 +19,7 @@ jobs:
         run: |
           set -euo pipefail
           archive="$RUNNER_TEMP/actionlint_1.7.12_linux_amd64.tar.gz"
-          curl --proto '=https' --tlsv1.2 -fsSL \
+          curl --proto '=https' --tlsv1.2 --retry 5 --retry-all-errors --retry-delay 2 -fsSL \
             'https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz' \
             -o "$archive"
           tar -xzf "$archive" -C "$RUNNER_TEMP" actionlint
