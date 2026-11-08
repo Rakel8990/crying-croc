@@ -177,13 +177,19 @@ jobs:
             local label="$1" signer_id="$2" key_file="$3"
             shift 3
             local log_file="$CROC_RUN_DIR/logs/${label}.log"
-            local exit_code
-            if "$CROC_NEAR_BIN" "$@" sign-as "$signer_id" network-config testnet sign-with-access-key-file "$key_file" send >"$log_file" 2>&1; then
-              :
-            else
-              exit_code=$?
+            local exit_code retry_expired=0
+            while :; do
+              if "$CROC_NEAR_BIN" "$@" sign-as "$signer_id" network-config testnet sign-with-access-key-file "$key_file" send >"$log_file" 2>&1; then
+                break
+              else
+                exit_code=$?
+              fi
+              if (( retry_expired == 0 )) && grep -aFq -- 'Transaction has expired.' "$log_file"; then
+                retry_expired=1
+                continue
+              fi
               fail_step "$label transaction" "$exit_code"
-            fi
+            done
             local tx_hash
             tx_hash="$(transaction_id_from_log "$log_file")"
             [[ -n "$tx_hash" ]] || fail_step "$label transaction-id extraction" 1
