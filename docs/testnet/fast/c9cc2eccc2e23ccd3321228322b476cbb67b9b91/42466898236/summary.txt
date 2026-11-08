@@ -1,0 +1,8 @@
+CROC fast testnet smoke run: c9cc2eccc2e23ccd3321228322b476cbb67b9b91 / 42466898236
+Contract: croc-fast-42466898236-1.testnet
+Copy: fast, 5-minute days, target 5
+Deploy plus new(): one atomic transaction, hash GZ6WwrhzNoirdeqD3QStZT4br7Y8QSVDtYnPpvqatohi, exactly two actions
+Smoke: five registered check-ins, settled streak 1, claimer received 630000 CROC (630000000000000000000000 yoctoCROC)
+Status: today's check-ins 0; streak 1; longest streak 1; pool 696500000 CROC; treasury 300350000 CROC
+Contract native balance: 10.0032068452397622 NEAR (10003206845239762200000000 yoctoNEAR)
+Gas: gas.csv records gas and native fees from finalized transaction and receipt outcomes, in NEAR and yoctoNEAR.
