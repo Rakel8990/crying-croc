@@ -24,6 +24,7 @@ jobs:
       CROC_SOURCE_SHA: ${{ github.sha }}
       CROC_RUN_ID: ${{ github.run_id }}
       CROC_RUN_ATTEMPT: ${{ github.run_attempt }}
+      CROC_PRIVATE_KEY_PATTERN: 'ed25519:[1-9A-HJ-NP-Za-km-z]{80,90}'
 
     steps:
       - name: Check out the selected main commit
@@ -391,14 +392,34 @@ jobs:
           git commit -m "docs: record fast testnet smoke results"
           git push origin HEAD:main
 
+      - name: Self-test private-key scanner with fake strings
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          fake_private="$(python3 -c 'print("ed25519:" + "1" * 88)')"
+          fake_public="$(python3 -c 'print("ed25519:" + "1" * 44)')"
+          self_test_dir="$(mktemp -d "$RUNNER_TEMP/croc-scanner-selftest.XXXXXX")"
+          trap 'rm -rf -- "$self_test_dir"' EXIT
+          printf '%s\n' "$fake_private" > "$self_test_dir/private-shaped.txt"
+          printf '%s\n' "$fake_public" > "$self_test_dir/public-shaped.txt"
+          if ! grep -aEq -- "$CROC_PRIVATE_KEY_PATTERN" "$self_test_dir/private-shaped.txt"; then
+            echo "Private-key scanner self-test failed: 88-character fake was not flagged."
+            exit 1
+          fi
+          if grep -aEq -- "$CROC_PRIVATE_KEY_PATTERN" "$self_test_dir/public-shaped.txt"; then
+            echo "Private-key scanner self-test failed: 44-character fake was flagged."
+            exit 1
+          fi
+          echo "Private-key scanner self-test checked an 88-character fake and a 44-character fake."
+
       - name: Scan captured logs and report outputs for credential markers
         if: always()
         shell: bash
         run: |
           set -euo pipefail
           set +x
-          key_marker="ed""25519:"
-          forbidden_marker="sec""ret"
           scan_root="$RUNNER_TEMP/croc-fast-run"
           if [[ ! -d "$scan_root/logs" || ! -d "$scan_root/output" ]]; then
             echo "Credential marker scan failed (exit code 1): captured log and report directories are missing."
@@ -406,14 +427,16 @@ jobs:
           fi
           scan_failed=0
           while IFS= read -r -d '' file; do
-            if grep -aFq -- "$key_marker" "$file"; then
-              printf 'Credential marker detected: file=%s marker=ed25519:\n' "$file"
+            if grep -aEq -- "$CROC_PRIVATE_KEY_PATTERN" "$file"; then
+              printf 'Credential marker detected: file=%s marker=private-key-format\n' "$file"
               scan_failed=1
             fi
-            if grep -aiFq -- "$forbidden_marker" "$file"; then
-              printf 'Credential marker detected: file=%s marker=secret\n' "$file"
-              scan_failed=1
-            fi
+            for marker_name in private_key secret_key seed_phrase; do
+              if grep -aiFq -- "$marker_name" "$file"; then
+                printf 'Credential marker detected: file=%s marker=%s\n' "$file" "$marker_name"
+                scan_failed=1
+              fi
+            done
           done < <(find "$scan_root/logs" "$scan_root/output" -type f -print0 2>/dev/null)
           if (( scan_failed != 0 )); then
             echo "Credential marker scan failed (exit code 1)."
@@ -427,8 +450,6 @@ jobs:
         run: |
           set -euo pipefail
           set +x
-          key_marker="ed""25519:"
-          forbidden_marker="sec""ret"
           run_dir="$RUNNER_TEMP/croc-fast-run"
           sanitized_dir="$RUNNER_TEMP/croc-fast-sanitized"
           destination="testnet/fast/$GITHUB_SHA/$GITHUB_RUN_ID/logs"
@@ -436,7 +457,7 @@ jobs:
           if [[ -d "$run_dir/logs" || -d "$run_dir/output" ]]; then
             while IFS= read -r -d '' file; do
               safe_name="$(basename "$file").tail.txt"
-              if grep -aivF -- "$key_marker" "$file" 2>/dev/null | grep -aivF -- "$forbidden_marker" 2>/dev/null | tail -n 80 >"$sanitized_dir/$safe_name"; then
+              if grep -aEiv -- "$CROC_PRIVATE_KEY_PATTERN|private_key|secret_key|seed_phrase" "$file" 2>/dev/null | tail -n 80 >"$sanitized_dir/$safe_name"; then
                 :
               else
                 :
