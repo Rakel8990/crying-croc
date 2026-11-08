@@ -24,7 +24,6 @@ jobs:
       CROC_SOURCE_SHA: ${{ github.sha }}
       CROC_RUN_ID: ${{ github.run_id }}
       CROC_RUN_ATTEMPT: ${{ github.run_attempt }}
-      CROC_PRIVATE_KEY_PATTERN: 'ed25519:[1-9A-HJ-NP-Za-km-z]{80,90}'
 
     steps:
       - name: Check out the selected main commit
@@ -430,27 +429,31 @@ jobs:
           git commit -m "docs: record fast testnet smoke results"
           git push origin HEAD:main
 
-      - name: Self-test private-key scanner with fake strings
+      - name: Self-test exact private-key scanner with fake strings
         if: always()
         shell: bash
         run: |
           set -euo pipefail
           set +x
-          fake_private="$(python3 -c 'print("ed25519:" + "1" * 88)')"
-          fake_public="$(python3 -c 'print("ed25519:" + "1" * 44)')"
+          fake_key="$(python3 -c 'print("ed25519:" + "1" * 88)')"
+          fake_signature="$(python3 -c 'print("ed25519:" + "2" * 88)')"
           self_test_dir="$(mktemp -d "$RUNNER_TEMP/croc-scanner-selftest.XXXXXX")"
           trap 'rm -rf -- "$self_test_dir"' EXIT
-          printf '%s\n' "$fake_private" > "$self_test_dir/private-shaped.txt"
-          printf '%s\n' "$fake_public" > "$self_test_dir/public-shaped.txt"
-          if ! grep -aEq -- "$CROC_PRIVATE_KEY_PATTERN" "$self_test_dir/private-shaped.txt"; then
-            echo "Private-key scanner self-test failed: 88-character fake was not flagged."
+          printf '{"private_key":"%s"}\n' "$fake_key" > "$self_test_dir/fake-credentials.json"
+          chmod 600 "$self_test_dir/fake-credentials.json"
+          jq -er '.private_key' "$self_test_dir/fake-credentials.json" > "$self_test_dir/fake-key-matches.txt"
+          chmod 600 "$self_test_dir/fake-key-matches.txt"
+          printf 'fake log contains %s\n' "$fake_key" > "$self_test_dir/matching-log.txt"
+          printf 'fake log contains signature %s\n' "$fake_signature" > "$self_test_dir/signature-log.txt"
+          if ! grep -aFq -f "$self_test_dir/fake-key-matches.txt" "$self_test_dir/matching-log.txt"; then
+            echo "Exact-key scanner self-test failed: fake credential match was not flagged."
             exit 1
           fi
-          if grep -aEq -- "$CROC_PRIVATE_KEY_PATTERN" "$self_test_dir/public-shaped.txt"; then
-            echo "Private-key scanner self-test failed: 44-character fake was flagged."
+          if grep -aFq -f "$self_test_dir/fake-key-matches.txt" "$self_test_dir/signature-log.txt"; then
+            echo "Exact-key scanner self-test failed: unrelated signature-shaped fake was flagged."
             exit 1
           fi
-          echo "Private-key scanner self-test checked an 88-character fake and a 44-character fake."
+          echo "Exact-key scanner self-test checked a fake credential match and an unrelated 88-character fake signature."
 
       - name: Scan captured logs and report outputs for credential markers
         if: always()
@@ -459,14 +462,30 @@ jobs:
           set -euo pipefail
           set +x
           scan_root="$RUNNER_TEMP/croc-fast-run"
+          key_dir="${CROC_KEY_DIR:-$RUNNER_TEMP/croc-fast-keys}"
+          key_matches_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.txt"
+          key_ready_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.ready"
+          umask 077
+          : > "$key_matches_file"
+          chmod 600 "$key_matches_file"
+          if [[ -d "$key_dir" ]]; then
+            while IFS= read -r -d '' credential_file; do
+              if ! jq -er '.private_key // .secret_key // empty' "$credential_file" >> "$key_matches_file" 2>/dev/null; then
+                echo "Credential key extraction failed (exit code 1)."
+                exit 1
+              fi
+            done < <(find "$key_dir" -type f -name '*.json' -print0 2>/dev/null)
+          fi
+          : > "$key_ready_file"
+          chmod 600 "$key_ready_file"
           if [[ ! -d "$scan_root/logs" || ! -d "$scan_root/output" ]]; then
             echo "Credential marker scan failed (exit code 1): captured log and report directories are missing."
             exit 1
           fi
           scan_failed=0
           while IFS= read -r -d '' file; do
-            if grep -aEq -- "$CROC_PRIVATE_KEY_PATTERN" "$file"; then
-              printf 'Credential marker detected: file=%s marker=private-key-format\n' "$file"
+            if [[ -s "$key_matches_file" ]] && grep -aFq -f "$key_matches_file" "$file"; then
+              printf 'Credential marker detected: file=%s marker=private-key-value\n' "$file"
               scan_failed=1
             fi
             for marker_name in private_key secret_key seed_phrase; do
@@ -490,15 +509,23 @@ jobs:
           set +x
           run_dir="$RUNNER_TEMP/croc-fast-run"
           sanitized_dir="$RUNNER_TEMP/croc-fast-sanitized"
+          key_matches_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.txt"
+          key_ready_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.ready"
           destination="testnet/fast/$GITHUB_SHA/$GITHUB_RUN_ID/logs"
           mkdir -p "$sanitized_dir"
-          if [[ -d "$run_dir/logs" || -d "$run_dir/output" ]]; then
+          if [[ -f "$key_ready_file" && -f "$key_matches_file" && ( -d "$run_dir/logs" || -d "$run_dir/output" ) ]]; then
             while IFS= read -r -d '' file; do
               safe_name="$(basename "$file").tail.txt"
-              if grep -aEiv -- "$CROC_PRIVATE_KEY_PATTERN|private_key|secret_key|seed_phrase" "$file" 2>/dev/null | tail -n 80 >"$sanitized_dir/$safe_name"; then
-                :
-              else
-                :
+              {
+                if [[ -s "$key_matches_file" ]]; then
+                  grep -aFv -f "$key_matches_file" "$file" 2>/dev/null || true
+                else
+                  cat "$file"
+                fi
+              } | { grep -aEiv -- 'private_key|secret_key|seed_phrase' || true; } | tail -n 80 >"$sanitized_dir/$safe_name"
+              if [[ ! -e "$sanitized_dir/$safe_name" ]]; then
+                echo "Sanitized log creation failed (exit code 1)."
+                exit 1
               fi
             done < <(find "$run_dir/logs" "$run_dir/output" -type f -print0 2>/dev/null || true)
           else
@@ -535,7 +562,10 @@ jobs:
           set +x
           key_dir="${CROC_KEY_DIR:-$RUNNER_TEMP/croc-fast-keys}"
           cli_home="${CROC_CLI_HOME:-$RUNNER_TEMP/croc-fast-cli-home}"
+          key_matches_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.txt"
+          key_ready_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.ready"
           rm -rf -- "$key_dir" "$cli_home"
+          rm -f -- "$key_matches_file" "$key_ready_file"
           if [[ -e "$key_dir" || -e "$cli_home" ]]; then
             echo "Credential cleanup failed (exit code 1)."
             exit 1
