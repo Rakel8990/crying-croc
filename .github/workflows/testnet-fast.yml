@@ -54,7 +54,18 @@ jobs:
             printf 'CROC_KEY_DIR=%s/croc-fast-keys\n' "$RUNNER_TEMP"
             printf 'CROC_CLI_HOME=%s/croc-fast-cli-home\n' "$RUNNER_TEMP"
             printf 'CROC_NEAR_BIN=%s/croc-fast-cli-home/bin/near\n' "$RUNNER_TEMP"
+            printf 'CROC_NEAR_CACHE_DIR=%s/croc-near-cli-cache\n' "$RUNNER_TEMP"
           } >> "$GITHUB_ENV"
+
+      - name: Prepare pinned near-cli-rs binary cache
+        shell: bash
+        run: mkdir -p "$RUNNER_TEMP/croc-near-cli-cache"
+
+      - name: Restore pinned near-cli-rs binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/croc-near-cli-cache/
+          key: near-cli-rs-v0.31.1-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install Rust, build the Wasm, and install pinned near-cli-rs
         shell: bash
@@ -70,16 +81,43 @@ jobs:
             sed -E 's/ed''25519:[[:alnum:]]+/[REDACTED]/g; s/sec''ret/[REDACTED]/Ig' "$CROC_RUN_DIR/logs/wasm-build.log" | tail -n 80
             exit 1
           }
-          installer_log="$CROC_RUN_DIR/logs/near-installer.log"
-          installer_url="https://github.com/near/near-cli-rs/releases/download/v0.31.1/near-cli-rs-installer.sh"
-          curl --proto '=https' --tlsv1.2 -fsSL "$installer_url" | CARGO_HOME="$CROC_CLI_HOME" sh >"$installer_log" 2>&1 || {
-            echo "near-cli-rs v0.31.1 installer failed; sanitized diagnostic follows."
-            sed -E 's/ed''25519:[[:alnum:]]+/[REDACTED]/g; s/sec''ret/[REDACTED]/Ig' "$installer_log" | tail -n 80
+          cli_cache_file="$CROC_NEAR_CACHE_DIR/near"
+          if [[ -x "$cli_cache_file" ]]; then
+            mkdir -p "$CROC_CLI_HOME/bin"
+            cp "$cli_cache_file" "$CROC_NEAR_BIN"
+            chmod 700 "$CROC_NEAR_BIN"
+            install_method="cached-binary"
+          else
+            installer_script="$CROC_RUN_DIR/logs/near-cli-rs-installer.sh"
+            installer_download_log="$CROC_RUN_DIR/logs/near-installer-download.log"
+            installer_log="$CROC_RUN_DIR/logs/near-installer.log"
+            installer_url="https://github.com/near/near-cli-rs/releases/download/v0.31.1/near-cli-rs-installer.sh"
+            if curl --proto '=https' --tlsv1.2 --retry 5 --retry-delay 10 --retry-all-errors -fsSL "$installer_url" -o "$installer_script" >"$installer_download_log" 2>&1 \
+              && CARGO_HOME="$CROC_CLI_HOME" sh "$installer_script" >"$installer_log" 2>&1 \
+              && test -x "$CROC_NEAR_BIN"; then
+              install_method="prebuilt-installer"
+            else
+              cargo_install_log="$CROC_RUN_DIR/logs/near-cargo-install.log"
+              if CARGO_HOME="$CROC_CLI_HOME" cargo install near-cli-rs --version 0.31.1 --locked --no-default-features --root "$CROC_CLI_HOME" >"$cargo_install_log" 2>&1 \
+                && test -x "$CROC_NEAR_BIN"; then
+                install_method="cargo-fallback"
+              else
+                install_exit_code=$?
+                echo "near-cli-rs install failed (exit code $install_exit_code)."
+                exit "$install_exit_code"
+              fi
+            fi
+            cp "$CROC_NEAR_BIN" "$cli_cache_file"
+            chmod 700 "$cli_cache_file"
+          fi
+          if cli_version_output="$("$CROC_NEAR_BIN" --version 2>/dev/null)" && [[ "$cli_version_output" == *"0.31.1"* ]]; then
+            :
+          else
+            echo "near-cli-rs version verification failed (exit code 1)."
             exit 1
-          }
+          fi
           echo "$CROC_CLI_HOME/bin" >> "$GITHUB_PATH"
-          test -x "$CROC_NEAR_BIN"
-          echo "Wasm build and pinned CLI installation completed."
+          printf 'near-cli-rs method=%s version=0.31.1\n' "$install_method"
 
       - name: Create fresh accounts, atomically deploy and initialize, then smoke test
         shell: bash
