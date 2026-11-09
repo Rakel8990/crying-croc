@@ -199,17 +199,22 @@ jobs:
           }
 
           sign_and_send() {
-            local label="$1" signer_mode="$2" signer="$3" key_file="$4"
-            shift 4
+            local label="$1"
+            shift
+            local -a command_args=() signer_tokens=()
+            while (( $# )); do
+              if [[ "$1" == '--signer-tokens' ]]; then
+                shift
+                signer_tokens=("$@")
+                break
+              fi
+              command_args+=("$1")
+              shift
+            done
+            (( ${#signer_tokens[@]} > 0 )) || fail_step "$label signer tokens" 1
             local log_file="$CROC_RUN_DIR/logs/${label}.log" status retried=0 tx_hash
-            local signer_args=()
-            case "$signer_mode" in
-              sign-as) signer_args=(sign-as "$signer");;
-              no-sign-as) ;;
-              *) fail_step "$label signer mode" 1;;
-            esac
             while :; do
-              if "$CROC_NEAR_BIN" "$@" "${signer_args[@]}" network-config testnet sign-with-access-key-file "$key_file" send >"$log_file" 2>&1; then
+              if "$CROC_NEAR_BIN" "${command_args[@]}" "${signer_tokens[@]}" >"$log_file" 2>&1; then
                 break
               else
                 status=$?
@@ -257,7 +262,7 @@ jobs:
           wasm_sha256_hex="$(sha256sum "$wasm_file" | awk '{print $1}')"
           wasm_sha256_base58="$(python3 -c 'import sys; exec("raw=bytes.fromhex(sys.argv[1])\nalphabet=\"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz\"\nn=int.from_bytes(raw,\"big\")\noutput=\"\"\nwhile n:\n    n,remainder=divmod(n,58)\n    output=alphabet[remainder]+output\nprint(\"1\"*(len(raw)-len(raw.lstrip(bytes([0]))))+output)")' "$wasm_sha256_hex")"
 
-          deploy_hash="$(sign_and_send deploy-init sign-as "$contract_id" "$contract_key" contract deploy "$contract_id" use-file "$wasm_file" with-init-call new json-args "{\"day_length_ns\":${CROC_DAY_LENGTH_NS},\"target\":${CROC_TARGET}}" prepaid-gas '100 TGas' attached-deposit '0 NEAR')" || deploy_hash=''
+          deploy_hash="$(sign_and_send deploy-init contract deploy "$contract_id" use-file "$wasm_file" with-init-call new json-args "{\"day_length_ns\":${CROC_DAY_LENGTH_NS},\"target\":${CROC_TARGET}}" prepaid-gas '100 TGas' attached-deposit '0 NEAR' --signer-tokens network-config testnet sign-with-access-key-file "$contract_key" send)" || deploy_hash=''
           [[ -n "$deploy_hash" ]] || fail_step 'deploy-init transaction hash' 1
           tx_body="$(jq -cn --arg hash "$deploy_hash" --arg signer "$contract_id" '{jsonrpc:"2.0",id:"croc-final-tx",method:"EXPERIMENTAL_tx_status",params:[$hash,$signer]}')"
           tx_file="$CROC_RUN_DIR/output/tx-deploy-init.json"
@@ -288,7 +293,7 @@ jobs:
           before_keys="$CROC_PRIVATE_DIR/access-keys-before-delete.json"
           rpc_post_to_file 'pre-delete access-key list' "$key_list_body" "$before_keys"
           public_keys_csv="$(jq -er '[.result.keys[].public_key] | join(",") | select(length > 0)' "$before_keys")" || fail_step 'pre-delete access-key list assertion' 1
-          delete_hash="$(sign_and_send delete-keys no-sign-as "$contract_id" "$contract_key" account delete-keys "$contract_id" public-keys "$public_keys_csv")" || delete_hash=''
+          delete_hash="$(sign_and_send delete-keys account delete-keys "$contract_id" public-keys "$public_keys_csv" --signer-tokens network-config testnet sign-with-access-key-file "$contract_key" send)" || delete_hash=''
           [[ -n "$delete_hash" ]] || fail_step 'delete-keys transaction hash' 1
           after_keys="$CROC_PRIVATE_DIR/access-keys-after-delete.json"
           rpc_post_to_file 'post-delete access-key list' "$key_list_body" "$after_keys"
@@ -331,10 +336,11 @@ jobs:
           git add "docs/testnet/final/$CROC_SOURCE_SHA/$CROC_RUN_ID"
           git commit -m 'docs: record final testnet deployment proof'
           main_pushed=0
-          for attempt in 1 2 3; do
+          main_push_attempts=0
+          while (( main_pushed == 0 && main_push_attempts < 3 )); do
+            main_push_attempts=$((main_push_attempts + 1))
             if git pull --rebase origin main && git push origin HEAD:main; then
               main_pushed=1
-              break
             fi
           done
           (( main_pushed == 1 )) || { echo 'Main results push failed after 3 attempts.'; exit 1; }
