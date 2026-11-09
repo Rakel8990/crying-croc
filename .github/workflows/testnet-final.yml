@@ -108,6 +108,18 @@ jobs:
           grep -Fq '0.31.1' "$CROC_RUN_DIR/logs/near-version.log" || { echo 'near-cli-rs version verification failed.'; exit 1; }
           printf 'near-cli-rs method=%s version=0.31.1\n' "$install_method"
 
+      - name: Record near-cli-rs command help
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          printf '%s\n' 'near account delete-keys --help'
+          "$CROC_NEAR_BIN" account delete-keys --help
+          printf '%s\n' 'near contract deploy --help'
+          "$CROC_NEAR_BIN" contract deploy --help
+          printf '%s\n' 'near account create-account --help'
+          "$CROC_NEAR_BIN" account create-account --help
+
       - name: Deploy final copy, read back state, and delete keys
         shell: bash
         run: |
@@ -170,17 +182,38 @@ jobs:
               status=$?
               fail_step 'faucet-sponsored contract account creation' "$status"
             fi
+
+            local account_body account_file account_ready=0 deadline
+            account_body="$(jq -cn --arg account "$account_id" '{jsonrpc:"2.0",id:"croc-final-account-created",method:"query",params:{request_type:"view_account",finality:"final",account_id:$account}}')"
+            account_file="$CROC_RUN_DIR/output/rpc-account-created.json"
+            deadline=$((SECONDS + 60))
+            while (( SECONDS < deadline )); do
+              if curl --proto '=https' --tlsv1.2 --max-time 5 -fsS -H 'Content-Type: application/json' --data "$account_body" "$NEAR_RPC" >"$account_file" 2>/dev/null \
+                && jq -e '.result.amount != null' "$account_file" >/dev/null 2>&1; then
+                account_ready=1
+                break
+              fi
+              sleep 5
+            done
+            [[ "$account_ready" == 1 ]] || fail_step 'faucet account RPC visibility' 1
           }
 
           sign_and_send() {
-            local label="$1" signer="$2" key_file="$3"
-            shift 3
+            local label="$1" signer_mode="$2" signer="$3" key_file="$4"
+            shift 4
             local log_file="$CROC_RUN_DIR/logs/${label}.log" status retried=0 tx_hash
+            local signer_args=()
+            case "$signer_mode" in
+              sign-as) signer_args=(sign-as "$signer");;
+              no-sign-as) ;;
+              *) fail_step "$label signer mode" 1;;
+            esac
             while :; do
-              if "$CROC_NEAR_BIN" "$@" sign-as "$signer" network-config testnet sign-with-access-key-file "$key_file" send >"$log_file" 2>&1; then
+              if "$CROC_NEAR_BIN" "$@" "${signer_args[@]}" network-config testnet sign-with-access-key-file "$key_file" send >"$log_file" 2>&1; then
                 break
+              else
+                status=$?
               fi
-              status=$?
               if (( retried == 0 )) && grep -aFq 'Transaction has expired.' "$log_file"; then
                 retry_state_body='{"jsonrpc":"2.0","id":"croc-final-expiry-check","method":"block","params":{"finality":"final"}}'
                 retry_state_file="$CROC_RUN_DIR/output/rpc-expiry-retry.json"
@@ -224,7 +257,8 @@ jobs:
           wasm_sha256_hex="$(sha256sum "$wasm_file" | awk '{print $1}')"
           wasm_sha256_base58="$(python3 -c 'import sys; exec("raw=bytes.fromhex(sys.argv[1])\nalphabet=\"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz\"\nn=int.from_bytes(raw,\"big\")\noutput=\"\"\nwhile n:\n    n,remainder=divmod(n,58)\n    output=alphabet[remainder]+output\nprint(\"1\"*(len(raw)-len(raw.lstrip(bytes([0]))))+output)")' "$wasm_sha256_hex")"
 
-          deploy_hash="$(sign_and_send deploy-init "$contract_id" "$contract_key" contract deploy "$contract_id" use-file "$wasm_file" with-init-call new json-args "{\"day_length_ns\":${CROC_DAY_LENGTH_NS},\"target\":${CROC_TARGET}}" prepaid-gas '100 TGas' attached-deposit '0 NEAR')"
+          deploy_hash="$(sign_and_send deploy-init sign-as "$contract_id" "$contract_key" contract deploy "$contract_id" use-file "$wasm_file" with-init-call new json-args "{\"day_length_ns\":${CROC_DAY_LENGTH_NS},\"target\":${CROC_TARGET}}" prepaid-gas '100 TGas' attached-deposit '0 NEAR')" || deploy_hash=''
+          [[ -n "$deploy_hash" ]] || fail_step 'deploy-init transaction hash' 1
           tx_body="$(jq -cn --arg hash "$deploy_hash" --arg signer "$contract_id" '{jsonrpc:"2.0",id:"croc-final-tx",method:"EXPERIMENTAL_tx_status",params:[$hash,$signer]}')"
           tx_file="$CROC_RUN_DIR/output/tx-deploy-init.json"
           rpc_post_to_file 'atomic deploy transaction status' "$tx_body" "$tx_file"
@@ -244,7 +278,8 @@ jobs:
           contract_balance="$(checked_jq 'view_account balance' "$account_file" '.result.amount')"
           contract_storage_usage="$(checked_jq 'view_account storage usage' "$account_file" '.result.storage_usage')"
           [[ "$wasm_sha256_base58" == "$onchain_code_hash" ]] || fail_step 'Wasm SHA-256 and on-chain code-hash assertion' 1
-          python3 -c 'import sys; raise SystemExit(0 if int(sys.argv[1]) >= 5 * 10**24 else 1)' "$contract_balance" || fail_step 'minimum 5 NEAR balance assertion before key deletion' 1
+          available_balance="$(python3 -c 'import sys; amount, storage = map(int, sys.argv[1:]); print(amount - storage * 10**19)' "$contract_balance" "$contract_storage_usage")" || fail_step 'available balance calculation before key deletion' 1
+          python3 -c 'import sys; raise SystemExit(0 if int(sys.argv[1]) >= 5 * 10**24 else 1)' "$available_balance" || fail_step 'minimum 5 NEAR available balance assertion before key deletion' 1
 
           storage_estimate='Storage estimate: unmeasured; the published fast-run result has no bytes-per-day measurement.'
           printf '%s\n' "$storage_estimate" >"$CROC_RUN_DIR/output/storage-estimate.txt"
@@ -253,7 +288,8 @@ jobs:
           before_keys="$CROC_PRIVATE_DIR/access-keys-before-delete.json"
           rpc_post_to_file 'pre-delete access-key list' "$key_list_body" "$before_keys"
           public_keys_csv="$(jq -er '[.result.keys[].public_key] | join(",") | select(length > 0)' "$before_keys")" || fail_step 'pre-delete access-key list assertion' 1
-          delete_hash="$(sign_and_send delete-keys "$contract_id" "$contract_key" account delete-keys "$contract_id" public-keys "$public_keys_csv")"
+          delete_hash="$(sign_and_send delete-keys no-sign-as "$contract_id" "$contract_key" account delete-keys "$contract_id" public-keys "$public_keys_csv")" || delete_hash=''
+          [[ -n "$delete_hash" ]] || fail_step 'delete-keys transaction hash' 1
           after_keys="$CROC_PRIVATE_DIR/access-keys-after-delete.json"
           rpc_post_to_file 'post-delete access-key list' "$key_list_body" "$after_keys"
           checked_jq 'empty post-delete access-key list assertion' "$after_keys" '.result.keys | length == 0' >/dev/null
@@ -290,12 +326,21 @@ jobs:
           git -C ci-logs config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git -C ci-logs add "$destination"
           git -C ci-logs commit -m "Publish final testnet result for $CROC_SOURCE_SHA"
-          git -C ci-logs push origin HEAD:ci-logs
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add "docs/testnet/final/$CROC_SOURCE_SHA/$CROC_RUN_ID"
           git commit -m 'docs: record final testnet deployment proof'
-          git push origin HEAD:main
+          main_pushed=0
+          for attempt in 1 2 3; do
+            if git pull --rebase origin main && git push origin HEAD:main; then
+              main_pushed=1
+              break
+            fi
+          done
+          (( main_pushed == 1 )) || { echo 'Main results push failed after 3 attempts.'; exit 1; }
+          if ! git -C ci-logs push origin HEAD:ci-logs; then
+            echo 'ci-logs push failed; main results were already pushed.'
+          fi
 
       - name: Self-test exact private-key scanner
         if: always()
