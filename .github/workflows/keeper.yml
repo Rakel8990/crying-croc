@@ -1,0 +1,305 @@
+name: CROC final contract keeper
+
+on:
+  schedule:
+    - cron: '15 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: croc-keeper-final-42612804896-1
+  cancel-in-progress: false
+
+jobs:
+  settle-final-contract:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      KEEPER_TARGET_ACCOUNT: croc-final-42612804896-1.testnet
+      NEAR_RPC: https://rpc.testnet.near.org
+      CROC_SOURCE_SHA: ${{ github.sha }}
+      CROC_RUN_ID: ${{ github.run_id }}
+      CROC_RUN_ATTEMPT: ${{ github.run_attempt }}
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Check out ci-logs branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ci-logs
+          path: ci-logs
+          token: ${{ github.token }}
+
+      - name: Set temporary runner paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'CROC_RUN_DIR=%s/croc-keeper-run\n' "$RUNNER_TEMP"
+            printf 'CROC_KEY_DIR=%s/croc-keeper-keys\n' "$RUNNER_TEMP"
+            printf 'CROC_PRIVATE_DIR=%s/croc-keeper-private\n' "$RUNNER_TEMP"
+            printf 'CROC_CLI_HOME=%s/croc-keeper-cli-home\n' "$RUNNER_TEMP"
+            printf 'CROC_NEAR_BIN=%s/croc-keeper-cli-home/bin/near\n' "$RUNNER_TEMP"
+            printf 'CROC_NEAR_CACHE_DIR=%s/croc-near-cli-cache\n' "$RUNNER_TEMP"
+          } >> "$GITHUB_ENV"
+
+      - name: Restore pinned near-cli-rs binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/croc-near-cli-cache/
+          key: near-cli-rs-v0.31.1-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install pinned near-cli-rs
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          mkdir -p "$CROC_RUN_DIR/logs" "$CROC_RUN_DIR/output" "$CROC_KEY_DIR" "$CROC_PRIVATE_DIR" "$CROC_CLI_HOME" "$CROC_NEAR_CACHE_DIR"
+          chmod 700 "$CROC_RUN_DIR" "$CROC_KEY_DIR" "$CROC_PRIVATE_DIR" "$CROC_CLI_HOME"
+          cached_binary="$CROC_NEAR_CACHE_DIR/near"
+          if [[ -x "$cached_binary" ]]; then
+            mkdir -p "$CROC_CLI_HOME/bin"
+            cp "$cached_binary" "$CROC_NEAR_BIN"
+            chmod 700 "$CROC_NEAR_BIN"
+            install_method='cached-binary'
+          else
+            installer_url='https://github.com/near/near-cli-rs/releases/download/v0.31.1/near-cli-rs-installer.sh'
+            installer_script="$CROC_RUN_DIR/logs/near-cli-rs-installer.sh"
+            if curl --proto '=https' --tlsv1.2 --retry 5 --retry-delay 10 --retry-all-errors -fsSL "$installer_url" -o "$installer_script" >"$CROC_RUN_DIR/logs/near-installer-download.log" 2>&1 \
+              && CARGO_HOME="$CROC_CLI_HOME" sh "$installer_script" >"$CROC_RUN_DIR/logs/near-installer.log" 2>&1 \
+              && test -x "$CROC_NEAR_BIN"; then
+              install_method='prebuilt-installer'
+            elif CARGO_HOME="$CROC_CLI_HOME" cargo install near-cli-rs --version 0.31.1 --locked --no-default-features --root "$CROC_CLI_HOME" >"$CROC_RUN_DIR/logs/near-cargo-install.log" 2>&1 \
+              && test -x "$CROC_NEAR_BIN"; then
+              install_method='cargo-fallback'
+            else
+              echo 'near-cli-rs installation failed; raw diagnostic is retained only for the exact-key scanner.'
+              exit 1
+            fi
+            cp "$CROC_NEAR_BIN" "$cached_binary"
+            chmod 700 "$cached_binary"
+          fi
+          "$CROC_NEAR_BIN" --version >"$CROC_RUN_DIR/logs/near-version.log" 2>&1
+          grep -Fq '0.31.1' "$CROC_RUN_DIR/logs/near-version.log" || { echo 'near-cli-rs version verification failed.'; exit 1; }
+          printf 'near-cli-rs method=%s version=0.31.1\n' "$install_method"
+
+      - name: Create a fresh keeper account, settle once, and read status
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          exec > >(tee -a "$CROC_RUN_DIR/logs/run.log") 2>&1
+
+          fail_step() {
+            printf '%s failed (exit code %s).\n' "$1" "$2" >&2
+            exit "$2"
+          }
+
+          rpc_post_to_file() {
+            local label="$1" body="$2" output="$3" status
+            if curl --proto '=https' --tlsv1.2 -fsS -H 'Content-Type: application/json' --data "$body" "$NEAR_RPC" >"$output" 2>/dev/null; then
+              :
+            else
+              status=$?
+              fail_step "$label RPC request" "$status"
+            fi
+            [[ -s "$output" ]] || fail_step "$label RPC response" 5
+            jq -e . "$output" >/dev/null 2>&1 || fail_step "$label RPC JSON validation" 5
+          }
+
+          checked_jq() {
+            local label="$1" input="$2" filter="$3" status
+            [[ -s "$input" ]] || fail_step "$label JSON input" 5
+            if jq -er "$filter" "$input" 2>/dev/null; then
+              :
+            else
+              status=$?
+              fail_step "$label JSON extraction" "$status"
+            fi
+          }
+
+          view_method() {
+            local method="$1" args="$2" args_b64 body output
+            args_b64="$(printf '%s' "$args" | base64 -w 0)"
+            body="$(jq -cn --arg account "$KEEPER_TARGET_ACCOUNT" --arg method "$method" --arg args "$args_b64" '{jsonrpc:"2.0",id:"croc-keeper-view",method:"query",params:{request_type:"call_function",finality:"final",account_id:$account,method_name:$method,args_base64:$args}}')"
+            output="$CROC_RUN_DIR/output/rpc-view-${method}.json"
+            rpc_post_to_file "view:$method" "$body" "$output"
+            checked_jq "view:$method" "$output" '[.result.result[]] | implode | fromjson'
+          }
+
+          account_id="croc-keeper-${CROC_RUN_ID}-${CROC_RUN_ATTEMPT}.testnet"
+          [[ ${#account_id} -le 64 ]] || fail_step 'keeper account-id length assertion' 1
+          key_dir="$CROC_KEY_DIR/keeper"
+          mkdir -p "$key_dir"
+          chmod 700 "$key_dir"
+          if "$CROC_NEAR_BIN" account create-account fund-later use-auto-generation save-to-folder "$key_dir" >"$CROC_RUN_DIR/logs/keeper-keygen.log" 2>&1; then
+            :
+          else
+            status=$?
+            fail_step 'keeper temporary key generation' "$status"
+          fi
+          key_file="$(find "$key_dir" -maxdepth 1 -type f -name '*.json' -print -quit)"
+          [[ -n "$key_file" && -f "$key_file" ]] || fail_step 'keeper key-file creation' 1
+          public_key="$(jq -er '.public_key' "$key_file" 2>/dev/null)" || fail_step 'keeper public-key read' 5
+          [[ "$public_key" == ed25519:* ]] || fail_step 'keeper public-key format' 1
+
+          account_body="$(jq -cn --arg account "$account_id" '{jsonrpc:"2.0",id:"croc-keeper-account-check",method:"query",params:{request_type:"view_account",finality:"final",account_id:$account}}')"
+          account_file="$CROC_RUN_DIR/output/rpc-keeper-account.json"
+          account_visible() {
+            curl --proto '=https' --tlsv1.2 --max-time 5 -fsS -H 'Content-Type: application/json' --data "$account_body" "$NEAR_RPC" >"$account_file" 2>/dev/null \
+              && jq -e '.result.amount != null' "$account_file" >/dev/null 2>&1
+          }
+
+          account_created=0
+          create_attempts=0
+          while (( account_created == 0 && create_attempts < 3 )); do
+            create_attempts=$((create_attempts + 1))
+            if "$CROC_NEAR_BIN" account create-account sponsor-by-faucet-service "$account_id" use-manually-provided-public-key "$public_key" network-config testnet create >"$CROC_RUN_DIR/logs/keeper-create.log" 2>&1; then
+              account_created=1
+            elif account_visible; then
+              account_created=1
+            elif (( create_attempts < 3 )); then
+              sleep 5
+            fi
+          done
+          [[ "$account_created" == 1 ]] || fail_step 'faucet keeper-account creation after three attempts' 1
+
+          account_ready=0
+          deadline=$((SECONDS + 60))
+          while (( SECONDS < deadline )); do
+            if account_visible; then
+              account_ready=1
+              break
+            fi
+            sleep 5
+          done
+          [[ "$account_ready" == 1 ]] || fail_step 'faucet keeper-account RPC visibility' 1
+
+          transaction_id_from_log() {
+            sed -nE 's/.*Transaction ID: ([1-9A-HJ-NP-Za-km-z]{40,50}).*/\1/p' "$1" | tail -n 1
+          }
+
+          sign_and_send() {
+            local label="$1"
+            shift
+            local -a command_args=() signer_tokens=()
+            while (( $# )); do
+              if [[ "$1" == '--signer-tokens' ]]; then
+                shift
+                signer_tokens=("$@")
+                break
+              fi
+              command_args+=("$1")
+              shift
+            done
+            (( ${#signer_tokens[@]} > 0 )) || fail_step "$label signer tokens" 1
+            local log_file="$CROC_RUN_DIR/logs/${label}.log" status retried=0 tx_hash
+            while :; do
+              if "$CROC_NEAR_BIN" "${command_args[@]}" "${signer_tokens[@]}" >"$log_file" 2>&1; then
+                break
+              else
+                status=$?
+              fi
+              if (( retried == 0 )) && grep -aFq 'Transaction has expired.' "$log_file"; then
+                retry_state_body='{"jsonrpc":"2.0","id":"croc-keeper-expiry-check","method":"block","params":{"finality":"final"}}'
+                retry_state_file="$CROC_RUN_DIR/output/rpc-expiry-retry.json"
+                rpc_post_to_file 'expiration retry chain-state check' "$retry_state_body" "$retry_state_file"
+                checked_jq 'expiration retry chain-state check' "$retry_state_file" '.result.header.hash' >/dev/null
+                retried=1
+                continue
+              fi
+              fail_step "$label transaction" "$status"
+            done
+            tx_hash="$(transaction_id_from_log "$log_file")"
+            [[ -n "$tx_hash" ]] || fail_step "$label transaction-id extraction" 1
+            printf '%s' "$tx_hash"
+          }
+
+          # A caught-up contract succeeds with no state change; no value is required to increase.
+          settle_hash="$(sign_and_send settle contract call-function as-transaction "$KEEPER_TARGET_ACCOUNT" settle json-args '{}' prepaid-gas '100 TGas' attached-deposit '0 NEAR' --signer-tokens sign-as "$account_id" network-config testnet sign-with-access-key-file "$key_file" send)" || settle_hash=''
+          [[ -n "$settle_hash" ]] || fail_step 'settle transaction hash' 1
+          tx_body="$(jq -cn --arg hash "$settle_hash" --arg signer "$account_id" '{jsonrpc:"2.0",id:"croc-keeper-settle-status",method:"EXPERIMENTAL_tx_status",params:[$hash,$signer]}')"
+          tx_file="$CROC_RUN_DIR/output/rpc-settle-status.json"
+          rpc_post_to_file 'settle transaction status' "$tx_body" "$tx_file"
+          checked_jq 'settle transaction success' "$tx_file" '.result.transaction_outcome.outcome.status.SuccessValue != null or .result.transaction_outcome.outcome.status.SuccessReceiptId != null' >/dev/null
+
+          current_streak="$(view_method current_streak '{}')"
+          treasury="$(view_method treasury '{}')"
+          today_checkins="$(view_method today_checkins '{}')"
+          jq -cn --arg account "$KEEPER_TARGET_ACCOUNT" --arg hash "$settle_hash" --arg streak "$current_streak" --arg treasury "$treasury" --arg checkins "$today_checkins" '{account_id:$account,transaction_hash:$hash,current_streak:$streak,treasury:$treasury,today_checkins:$checkins}' >"$CROC_RUN_DIR/output/keeper-result.json"
+
+      - name: Self-test exact private-key scanner
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          scanner_dir="$(mktemp -d "$RUNNER_TEMP/croc-keeper-scanner.XXXXXX")"
+          trap 'rm -rf -- "$scanner_dir"' EXIT
+          fake_key="ed25519:$(printf '1%.0s' {1..88})"
+          fake_signature="ed25519:$(printf '2%.0s' {1..88})"
+          printf '{"private_key":"%s"}\n' "$fake_key" >"$scanner_dir/credential.json"
+          printf '%s\n' "$fake_key" >"$scanner_dir/needles"
+          printf 'contains %s\n' "$fake_key" >"$scanner_dir/match.log"
+          printf 'contains %s\n' "$fake_signature" >"$scanner_dir/signature.log"
+          grep -aFq -f "$scanner_dir/needles" "$scanner_dir/match.log" || { echo 'Exact-key scanner self-test failed: fake key was not detected.'; exit 1; }
+          if grep -aFq -f "$scanner_dir/needles" "$scanner_dir/signature.log"; then echo 'Exact-key scanner self-test failed: unrelated signature was detected.'; exit 1; fi
+          echo 'Exact-key scanner self-test passed with fake data.'
+
+      - name: Scan captured logs and outputs for exact credential values
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          key_matches="$RUNNER_TEMP/croc-keeper-key-matches-$GITHUB_RUN_ID.txt"
+          : >"$key_matches"
+          chmod 600 "$key_matches"
+          while IFS= read -r -d '' credential; do
+            jq -er '.private_key // .secret_key // empty' "$credential" >>"$key_matches" 2>/dev/null || { echo 'Credential key extraction failed (exit code 1).'; exit 1; }
+          done < <(find "$CROC_KEY_DIR" -type f -name '*.json' -print0 2>/dev/null)
+          failed=0
+          while IFS= read -r -d '' file; do
+            if [[ -s "$key_matches" ]] && grep -aFq -f "$key_matches" "$file"; then printf 'Credential marker detected: file=%s marker=private-key-value\n' "$file"; failed=1; fi
+            for marker in private_key secret_key seed_phrase; do
+              if grep -aiFq -- "$marker" "$file"; then printf 'Credential marker detected: file=%s marker=%s\n' "$file" "$marker"; failed=1; fi
+            done
+          done < <(find "$CROC_RUN_DIR/logs" "$CROC_RUN_DIR/output" -type f -print0 2>/dev/null)
+          (( failed == 0 )) || { echo 'Credential marker scan failed (exit code 1).'; exit 1; }
+          echo 'Credential marker scan found no markers in captured logs or outputs.'
+
+      - name: Publish keeper result to ci-logs
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          destination="keeper/$CROC_SOURCE_SHA/$CROC_RUN_ID"
+          mkdir -p "ci-logs/$destination"
+          cp "$CROC_RUN_DIR/output/keeper-result.json" "ci-logs/$destination/result.json"
+          git -C ci-logs config user.name 'github-actions[bot]'
+          git -C ci-logs config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C ci-logs add "$destination/result.json"
+          git -C ci-logs commit -m "Publish keeper result for $CROC_SOURCE_SHA"
+          git -C ci-logs push origin HEAD:ci-logs
+
+      - name: Wipe keeper credentials and verify removal
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          rm -rf -- "$CROC_KEY_DIR" "$CROC_PRIVATE_DIR" "$CROC_CLI_HOME"
+          rm -f -- "$RUNNER_TEMP/croc-keeper-key-matches-$GITHUB_RUN_ID.txt"
+          [[ ! -e "$CROC_KEY_DIR" && ! -e "$CROC_PRIVATE_DIR" && ! -e "$CROC_CLI_HOME" ]] || { echo 'Credential cleanup failed (exit code 1).'; exit 1; }
+          echo 'Credential directories wiped and verified absent.'
