@@ -1,0 +1,8 @@
+CROC final testnet deployment: a3e9c92ef8d530b7a2b20d2c70ab9f4890c81d6a / 42612804896
+Contract: croc-final-42612804896-1.testnet
+Atomic deploy plus new(): 5hT9vtPDFP39TQ2eSQ7JABp3QfYMubPgKjgDSPPiZC7S (two actions); 24-hour days; target 5.
+Read-backs only: clean state verified; no check-in smoke test ran.
+Wasm SHA-256: 2ce430b0263103ef1bf8435fdf1a180b941c94c80ac0803ede53b7636f99455d; on-chain code hash: 42EkaEvBZgcyZ13HKGSiDTbTxKNtuEQg9ErkqBJ8FGa8; match verified.
+Contract balance before key deletion: 9997407814058694400000000 yoctoNEAR; minimum 5 NEAR verified.
+Storage estimate: unmeasured; the published fast-run result has no bytes-per-day measurement.
+Delete-all-keys transaction: DKpivZVn4xURWttAnHgKYKVMn96d9ooCd3bDZvMD5ork; access-key list is empty.
