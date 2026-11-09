@@ -11,9 +11,7 @@ const mechanics = [
 export default function MechanicPage() {
   return (
     <main className="page-shell mechanic-page">
-      <video className="background-video" autoPlay muted loop playsInline preload="auto" aria-hidden="true">
-        <source src="https://files.catbox.moe/2pu9xu.mp4" type="video/mp4" />
-      </video>
+      <video className="background-video" src="https://files.catbox.moe/2pu9xu.mp4" autoPlay muted loop playsInline preload="auto" aria-hidden="true" />
       <div className="video-overlay" /><div className="ticker-field" aria-hidden="true"><span>$CROC</span><span>$NEAR</span><span>$CROC</span><span>$NEAR</span><span>$CROC</span><span>$NEAR</span></div>
       <div className="noise" />
       <header className="topbar">
