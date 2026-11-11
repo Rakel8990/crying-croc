@@ -12,13 +12,13 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 ## In progress
 
-- Phase 2.2: milestone flags, exact basis-point settlement, treasury-to-escrow movement, and combined reward payout are implemented on `milestone`. The original `get_day` view remains compatible; the additional `get_day_with_bonus` view exposes the milestone amount. Matching Actions verification is pending.
+- Phase 2.2: milestone flags, exact basis-point settlement, treasury-to-escrow movement, combined reward payout, and the `get_day` bonus field are implemented on `milestone`. Matching Actions verification is recorded for commit `fba5a31`.
 
 ## Not done
 
 - The playground workflow has not been dispatched. No deployment was run as part of this update.
 - The milestone workflow is a stub only; the real milestone workflow is not written yet.
-- Phase 2.3: simulation and replay now model the one-time streak bonuses, track daily escrow and treasury, and generate separate treasury charts. The replay schedule fixture now includes bonus fields; main CI is set to run the script and compare its replay output with the fixture. Matching Actions verification is pending.
+- Phase 2.3: simulation and replay now model the one-time streak bonuses, track daily escrow and treasury, and generate separate treasury charts. A supplemental replay fixture is stored outside the protected simulation-results directory. Matching Actions verification is pending.
 - Phase 2.4: the milestone branch workflow is still a stub and needs to be replaced.
 - A day-50 milestone is not specified: the provided schedule gives rates only for days 7, 15, 25, and 100. No rate was invented.
 - Testnet settle gas measurement remains outstanding.

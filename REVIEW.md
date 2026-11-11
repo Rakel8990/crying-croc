@@ -23,8 +23,7 @@ No owner or administrator role exists. Init arguments are immutable.
 | `settle()` | Anyone; processes up to seven elapsed days in order. |
 | `claim()` | A registered caller with an unresolved settled reward, after clearing any backlog. |
 | `day_length_ns()`, `target()`, `current_streak()`, `longest_streak()`, `today_checkins()`, `emission_pool()`, `treasury()`, `milestones_paid()` | Public read-only views; any caller. |
-| `get_day(day)` | Public read-only settled-day view with the original fields; any caller. |
-| `get_day_with_bonus(day)` | Public read-only settled-day view including the per-checker milestone bonus; any caller. |
+| `get_day(day)` | Public read-only settled-day view, including the per-checker milestone bonus; any caller. |
 | `ft_transfer(receiver_id, amount, memo)` | Registered token holder; NEP-141 requires one yoctoNEAR. Treasury and derived reward escrow cannot send. Receiver must be registered. |
 | `ft_transfer_call(receiver_id, amount, memo, msg)` | Same caller and deposit rules as `ft_transfer`; asynchronous receiver call is resolved through the private callback. Treasury and derived escrow cannot send. |
 | `ft_total_supply()`, `ft_balance_of(account_id)` | Public NEP-141 read-only views. |
@@ -46,7 +45,7 @@ The expected accounting identity is `total_supply = treasury balance + reward es
 - **Reward escrow:** RULES.md specifies lazy payment but does not prescribe an escrow account. The account is derived as `escrow.` plus the contract account ID (for example, `escrow.croc.testnet`); earned checker rewards are minted there and transferred to each user on their next check-in or `claim()`. The treasury and derived escrow are both blocked from initiating ordinary FT transfers; escrow can only pay through `resolve_pending_reward`.
 - **Unregister burn:** NEP-141 standard storage unregistration removes a caller's remaining token balance. This implementation emits the standard burn event for that balance. RULES.md requires refusing unregistration during an unresolved reward but does not describe what happens to an otherwise eligible unregistering holder's balance.
 - **Additional settlement record fields:** Each day record also retains success, treasury-minted amount, and burned amount for the emitted settlement event, alongside the checker count and per-checker reward described in the design.
-- **Streak milestones:** On successful streaks 7, 15, 25, and 100, the contract moves respectively 100, 150, 250, and 500 basis points of the treasury to reward escrow, floors the amount per checker, and marks the milestone paid once. This bonus schedule is an added approved project decision; it is not specified in `RULES.md`. `get_day_with_bonus` exposes the bonus amount and `milestones_paid` exposes the four paid flags.
+- **Streak milestones:** On successful streaks 7, 15, 25, and 100, the contract moves respectively 100, 150, 250, and 500 basis points of the treasury to reward escrow, floors the amount per checker, and marks the milestone paid once. This bonus schedule is an added approved project decision; it is not specified in `RULES.md`. `get_day` exposes the bonus amount and `milestones_paid` exposes the four paid flags.
 
 No other intentional change to the CROC arithmetic or user rules is known. There is no admin or upgrade method.
 

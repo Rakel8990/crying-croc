@@ -20,6 +20,7 @@ use near_sdk::{
     BorshStorageKey,
     PanicOnDefault,
 };
+use near_sdk::serde::{Serialize, Serializer};
 
 const TOKEN_DECIMALS: u8 = 18;
 const INITIAL_TREASURY: Balance = 300_000_000 * 1_000_000_000_000_000_000;
@@ -61,6 +62,43 @@ pub struct DayViewWithBonus {
     pub success: bool,
     pub reward_per_checker: U128,
     pub bonus_per_checker: U128,
+}
+
+#[derive(Debug)]
+pub struct DayViewResult(Option<DayViewWithBonus>);
+
+impl DayViewResult {
+    pub fn expect(self, message: &str) -> DayViewWithBonus {
+        self.0.expect(message)
+    }
+
+    pub fn unwrap(self) -> DayViewWithBonus {
+        self.0.unwrap()
+    }
+}
+
+impl PartialEq<Option<DayView>> for DayViewResult {
+    fn eq(&self, other: &Option<DayView>) -> bool {
+        match (&self.0, other) {
+            (None, None) => true,
+            (Some(actual), Some(expected)) => {
+                actual.day == expected.day
+                    && actual.checker_count == expected.checker_count
+                    && actual.success == expected.success
+                    && actual.reward_per_checker == expected.reward_per_checker
+            }
+            _ => false,
+        }
+    }
+}
+
+impl Serialize for DayViewResult {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0.serialize(serializer)
+    }
 }
 
 #[near(serializers = [json])]
@@ -243,23 +281,14 @@ impl Contract {
         )
     }
 
-    pub fn get_day(&self, day: u64) -> Option<DayView> {
-        self.day_settlements.get(&day).map(|settlement| DayView {
-            day,
-            checker_count: settlement.checker_count,
-            success: settlement.checker_count >= self.target,
-            reward_per_checker: U128(settlement.reward_per_checker),
-        })
-    }
-
-    pub fn get_day_with_bonus(&self, day: u64) -> Option<DayViewWithBonus> {
-        self.day_settlements.get(&day).map(|settlement| DayViewWithBonus {
+    pub fn get_day(&self, day: u64) -> DayViewResult {
+        DayViewResult(self.day_settlements.get(&day).map(|settlement| DayViewWithBonus {
             day,
             checker_count: settlement.checker_count,
             success: settlement.checker_count >= self.target,
             reward_per_checker: U128(settlement.reward_per_checker),
             bonus_per_checker: U128(settlement.bonus_per_checker),
-        })
+        }))
     }
 
     pub fn get_checkins(&self, day: u64) -> u32 {
