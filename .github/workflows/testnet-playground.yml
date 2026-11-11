@@ -1,0 +1,370 @@
+name: CROC playground testnet deployment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: croc-testnet-playground
+  cancel-in-progress: false
+
+jobs:
+  deploy-playground-copy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CROC_COPY: playground
+      CROC_DAY_LENGTH_NS: "300000000000"
+      CROC_TARGET: "1"
+      NEAR_RPC: https://rpc.testnet.near.org
+      CROC_SOURCE_SHA: ${{ github.sha }}
+      CROC_RUN_ID: ${{ github.run_id }}
+      CROC_RUN_ATTEMPT: ${{ github.run_attempt }}
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Check out sanitized-results branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ci-logs
+          path: ci-logs
+          token: ${{ github.token }}
+
+      - name: Install stable Rust with the WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Set temporary runner paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'CROC_RUN_DIR=%s/croc-playground-run\n' "$RUNNER_TEMP"
+            printf 'CROC_KEY_DIR=%s/croc-playground-keys\n' "$RUNNER_TEMP"
+            printf 'CROC_PRIVATE_DIR=%s/croc-playground-private\n' "$RUNNER_TEMP"
+            printf 'CROC_CLI_HOME=%s/croc-playground-cli-home\n' "$RUNNER_TEMP"
+            printf 'CROC_NEAR_BIN=%s/croc-playground-cli-home/bin/near\n' "$RUNNER_TEMP"
+            printf 'CROC_NEAR_CACHE_DIR=%s/croc-near-cli-cache\n' "$RUNNER_TEMP"
+          } >> "$GITHUB_ENV"
+
+      - name: Restore pinned near-cli-rs binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/croc-near-cli-cache/
+          key: near-cli-rs-v0.31.1-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Build Wasm and install pinned near-cli-rs
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          mkdir -p "$CROC_RUN_DIR/logs" "$CROC_RUN_DIR/output" "$CROC_KEY_DIR" "$CROC_PRIVATE_DIR" "$CROC_CLI_HOME" "$CROC_NEAR_CACHE_DIR"
+          chmod 700 "$CROC_RUN_DIR" "$CROC_KEY_DIR" "$CROC_PRIVATE_DIR" "$CROC_CLI_HOME"
+          exec > >(tee -a "$CROC_RUN_DIR/logs/run.log") 2>&1
+          cargo build --target wasm32-unknown-unknown --release >"$CROC_RUN_DIR/logs/wasm-build.log" 2>&1 || {
+            echo 'Release Wasm build failed; raw diagnostic is retained only for the exact-key scanner.'
+            exit 1
+          }
+          cached_binary="$CROC_NEAR_CACHE_DIR/near"
+          if [[ -x "$cached_binary" ]]; then
+            mkdir -p "$CROC_CLI_HOME/bin"
+            cp "$cached_binary" "$CROC_NEAR_BIN"
+            chmod 700 "$CROC_NEAR_BIN"
+            install_method='cached-binary'
+          else
+            installer_url='https://github.com/near/near-cli-rs/releases/download/v0.31.1/near-cli-rs-installer.sh'
+            installer_script="$CROC_RUN_DIR/logs/near-cli-rs-installer.sh"
+            if curl --proto '=https' --tlsv1.2 --retry 5 --retry-delay 10 --retry-all-errors -fsSL "$installer_url" -o "$installer_script" >"$CROC_RUN_DIR/logs/near-installer-download.log" 2>&1 \
+              && CARGO_HOME="$CROC_CLI_HOME" sh "$installer_script" >"$CROC_RUN_DIR/logs/near-installer.log" 2>&1 \
+              && test -x "$CROC_NEAR_BIN"; then
+              install_method='prebuilt-installer'
+            elif CARGO_HOME="$CROC_CLI_HOME" cargo install near-cli-rs --version 0.31.1 --locked --no-default-features --root "$CROC_CLI_HOME" >"$CROC_RUN_DIR/logs/near-cargo-install.log" 2>&1 \
+              && test -x "$CROC_NEAR_BIN"; then
+              install_method='cargo-fallback'
+            else
+              echo 'near-cli-rs installation failed; raw diagnostic is retained only for the exact-key scanner.'
+              exit 1
+            fi
+            cp "$CROC_NEAR_BIN" "$cached_binary"
+            chmod 700 "$cached_binary"
+          fi
+          "$CROC_NEAR_BIN" --version >"$CROC_RUN_DIR/logs/near-version.log" 2>&1
+          grep -Fq '0.31.1' "$CROC_RUN_DIR/logs/near-version.log" || { echo 'near-cli-rs version verification failed.'; exit 1; }
+          printf 'near-cli-rs method=%s version=0.31.1\n' "$install_method"
+
+      - name: Record safe near-cli-rs command help
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          printf '%s\n' 'near contract deploy --help'
+          "$CROC_NEAR_BIN" contract deploy --help
+          printf '%s\n' 'near account create-account --help'
+          "$CROC_NEAR_BIN" account create-account --help
+
+      - name: Deploy playground copy and read back state
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          export PATH="$CROC_CLI_HOME/bin:$PATH"
+          exec > >(tee -a "$CROC_RUN_DIR/logs/run.log") 2>&1
+
+          fail_step() {
+            printf '%s failed (exit code %s).\n' "$1" "$2" >&2
+            exit "$2"
+          }
+          rpc_post_to_file() {
+            local label="$1" body="$2" output="$3" status
+            if curl --proto '=https' --tlsv1.2 -fsS -H 'Content-Type: application/json' --data "$body" "$NEAR_RPC" >"$output" 2>/dev/null; then
+              :
+            else
+              status=$?
+              fail_step "$label RPC request" "$status"
+            fi
+            [[ -s "$output" ]] || fail_step "$label RPC response" 5
+            jq -e . "$output" >/dev/null 2>&1 || fail_step "$label RPC JSON validation" 5
+          }
+
+          checked_jq() {
+            local label="$1" input="$2" filter="$3" status
+            [[ -s "$input" ]] || fail_step "$label JSON input" 5
+            if jq -er "$filter" "$input" 2>/dev/null; then
+              :
+            else
+              status=$?
+              fail_step "$label JSON extraction" "$status"
+            fi
+          }
+
+          transaction_id_from_log() {
+            sed -nE 's/.*Transaction ID: ([1-9A-HJ-NP-Za-km-z]{40,50}).*/\1/p' "$1" | tail -n 1
+          }
+
+          create_faucet_account() {
+            local account_id="$1" key_path="$CROC_KEY_DIR/contract" status public_key
+            mkdir -p "$key_path"
+            chmod 700 "$key_path"
+            if "$CROC_NEAR_BIN" account create-account fund-later use-auto-generation save-to-folder "$key_path" >"$CROC_RUN_DIR/logs/contract-keygen.log" 2>&1; then
+              :
+            else
+              status=$?
+              fail_step 'temporary contract key generation' "$status"
+            fi
+            contract_key="$(find "$key_path" -maxdepth 1 -type f -name '*.json' -print -quit)"
+            [[ -n "$contract_key" && -f "$contract_key" ]] || fail_step 'contract key-file creation' 1
+            public_key="$(jq -er '.public_key' "$contract_key" 2>/dev/null)" || fail_step 'contract public-key read' 5
+            [[ "$public_key" == ed25519:* ]] || fail_step 'contract public-key format' 1
+            if "$CROC_NEAR_BIN" account create-account sponsor-by-faucet-service "$account_id" use-manually-provided-public-key "$public_key" network-config testnet create >"$CROC_RUN_DIR/logs/contract-create.log" 2>&1; then
+              :
+            else
+              status=$?
+              fail_step 'faucet-sponsored contract account creation' "$status"
+            fi
+
+            local account_body account_file account_ready=0 deadline
+            account_body="$(jq -cn --arg account "$account_id" '{jsonrpc:"2.0",id:"croc-playground-account-created",method:"query",params:{request_type:"view_account",finality:"final",account_id:$account}}')"
+            account_file="$CROC_RUN_DIR/output/rpc-account-created.json"
+            deadline=$((SECONDS + 60))
+            while (( SECONDS < deadline )); do
+              if curl --proto '=https' --tlsv1.2 --max-time 5 -fsS -H 'Content-Type: application/json' --data "$account_body" "$NEAR_RPC" >"$account_file" 2>/dev/null \
+                && jq -e '.result.amount != null' "$account_file" >/dev/null 2>&1; then
+                account_ready=1
+                break
+              fi
+              sleep 5
+            done
+            [[ "$account_ready" == 1 ]] || fail_step 'faucet account RPC visibility' 1
+          }
+
+          sign_and_send() {
+            local label="$1"
+            shift
+            local -a command_args=() signer_tokens=()
+            while (( $# )); do
+              if [[ "$1" == '--signer-tokens' ]]; then
+                shift
+                signer_tokens=("$@")
+                break
+              fi
+              command_args+=("$1")
+              shift
+            done
+            (( ${#signer_tokens[@]} > 0 )) || fail_step "$label signer tokens" 1
+            local log_file="$CROC_RUN_DIR/logs/${label}.log" status retried=0 tx_hash
+            while :; do
+              if "$CROC_NEAR_BIN" "${command_args[@]}" "${signer_tokens[@]}" >"$log_file" 2>&1; then
+                break
+              else
+                status=$?
+              fi
+              if (( retried == 0 )) && grep -aFq 'Transaction has expired.' "$log_file"; then
+                retry_state_body='{"jsonrpc":"2.0","id":"croc-playground-expiry-check","method":"block","params":{"finality":"final"}}'
+                retry_state_file="$CROC_RUN_DIR/output/rpc-expiry-retry.json"
+                rpc_post_to_file 'expiration retry chain-state check' "$retry_state_body" "$retry_state_file"
+                checked_jq 'expiration retry chain-state check' "$retry_state_file" '.result.header.hash' >/dev/null
+                retried=1
+                continue
+              fi
+              fail_step "$label transaction" "$status"
+            done
+            tx_hash="$(transaction_id_from_log "$log_file")"
+            if [[ -z "$tx_hash" ]]; then
+              fail_step "$label transaction-id extraction" 1
+            fi
+            printf '%s' "$tx_hash"
+          }
+
+          view_method() {
+            local method="$1" args="$2" args_b64 body output
+            args_b64="$(printf '%s' "$args" | base64 -w 0)"
+            body="$(jq -cn --arg account "$contract_id" --arg method "$method" --arg args "$args_b64" '{jsonrpc:"2.0",id:"croc-playground-view",method:"query",params:{request_type:"call_function",finality:"final",account_id:$account,method_name:$method,args_base64:$args}}')"
+            output="$CROC_RUN_DIR/output/rpc-view-${method}.json"
+            rpc_post_to_file "view:$method" "$body" "$output"
+            checked_jq "view:$method" "$output" '[.result.result[]] | implode | fromjson'
+          }
+
+          account_suffix="${CROC_RUN_ID}-${CROC_RUN_ATTEMPT}"
+          contract_id="croc-playground-${account_suffix}.testnet"
+          [[ ${#contract_id} -le 57 ]] || fail_step 'playground contract account-id length assertion' 1
+          create_faucet_account "$contract_id"
+
+          wasm_file="$GITHUB_WORKSPACE/target/wasm32-unknown-unknown/release/crying_croc.wasm"
+          [[ -s "$wasm_file" ]] || fail_step 'release Wasm file assertion' 1
+          wasm_sha256_hex="$(sha256sum "$wasm_file" | awk '{print $1}')"
+          wasm_sha256_base58="$(python3 -c 'import sys; exec("raw=bytes.fromhex(sys.argv[1])\nalphabet=\"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz\"\nn=int.from_bytes(raw,\"big\")\noutput=\"\"\nwhile n:\n    n,remainder=divmod(n,58)\n    output=alphabet[remainder]+output\nprint(\"1\"*(len(raw)-len(raw.lstrip(bytes([0]))))+output)")' "$wasm_sha256_hex")"
+
+          deploy_hash="$(sign_and_send deploy-init contract deploy "$contract_id" use-file "$wasm_file" with-init-call new json-args "{\"day_length_ns\":${CROC_DAY_LENGTH_NS},\"target\":${CROC_TARGET}}" prepaid-gas '100 TGas' attached-deposit '0 NEAR' --signer-tokens network-config testnet sign-with-access-key-file "$contract_key" send)" || deploy_hash=''
+          [[ -n "$deploy_hash" ]] || fail_step 'deploy-init transaction hash' 1
+          tx_body="$(jq -cn --arg hash "$deploy_hash" --arg signer "$contract_id" '{jsonrpc:"2.0",id:"croc-playground-tx",method:"EXPERIMENTAL_tx_status",params:[$hash,$signer]}')"
+          tx_file="$CROC_RUN_DIR/output/tx-deploy-init.json"
+          rpc_post_to_file 'atomic deploy transaction status' "$tx_body" "$tx_file"
+          checked_jq 'atomic deploy action verification' "$tx_file" '.result.transaction.actions | length == 2 and .[0].DeployContract != null and .[1].FunctionCall.method_name == "new"' >/dev/null
+
+          [[ "$(view_method day_length_ns '{}')" == "$CROC_DAY_LENGTH_NS" ]] || fail_step 'day_length_ns read-back assertion' 1
+          [[ "$(view_method target '{}')" == "$CROC_TARGET" ]] || fail_step 'target read-back assertion' 1
+          today_checkins="$(view_method today_checkins '{}')"
+          current_streak="$(view_method current_streak '{}')"
+          longest_streak="$(view_method longest_streak '{}')"
+          [[ "$today_checkins" == 0 && "$current_streak" == 0 && "$longest_streak" == 0 ]] || fail_step 'clean-state read-back assertion' 1
+
+          account_body="$(jq -cn --arg account "$contract_id" '{jsonrpc:"2.0",id:"croc-playground-account",method:"query",params:{request_type:"view_account",finality:"final",account_id:$account}}')"
+          account_file="$CROC_RUN_DIR/output/rpc-view-account.json"
+          rpc_post_to_file 'view_account' "$account_body" "$account_file"
+          onchain_code_hash="$(checked_jq 'view_account code hash' "$account_file" '.result.code_hash')"
+          contract_balance="$(checked_jq 'view_account balance' "$account_file" '.result.amount')"
+          contract_storage_usage="$(checked_jq 'view_account storage usage' "$account_file" '.result.storage_usage')"
+          [[ "$wasm_sha256_base58" == "$onchain_code_hash" ]] || fail_step 'Wasm SHA-256 and on-chain code-hash assertion' 1
+          cat >"$CROC_RUN_DIR/output/result.json" <<EOF
+          {"source_sha":"$CROC_SOURCE_SHA","run_id":"$CROC_RUN_ID","copy":"playground","contract_account_id":"$contract_id","day_length_ns":$CROC_DAY_LENGTH_NS,"target":$CROC_TARGET,"deploy_init_transaction_hash":"$deploy_hash","deploy_init_action_count":2,"wasm_sha256":"$wasm_sha256_hex","onchain_code_hash":"$onchain_code_hash","contract_balance_yoctoNEAR":"$contract_balance","contract_storage_usage_bytes":"$contract_storage_usage"}
+          EOF
+          cat >"$CROC_RUN_DIR/output/summary.txt" <<EOF
+          CROC playground testnet deployment: $CROC_SOURCE_SHA / $CROC_RUN_ID
+          Contract: $contract_id
+          Atomic deploy plus new(): $deploy_hash (two actions); 5-minute days; target 1.
+          Read-backs only: clean state verified; no check-in smoke test ran.
+          Wasm SHA-256: $wasm_sha256_hex; on-chain code hash: $onchain_code_hash; match verified.
+          Contract balance: $contract_balance yoctoNEAR; storage usage: $contract_storage_usage bytes.
+          No check-in smoke test or access-key deletion ran.
+          EOF
+          cat "$CROC_RUN_DIR/output/summary.txt"
+
+      - name: Publish sanitized playground result
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          destination="testnet/playground/$CROC_SOURCE_SHA/$CROC_RUN_ID"
+          mkdir -p "ci-logs/$destination"
+          cp "$CROC_RUN_DIR/output/result.json" "$CROC_RUN_DIR/output/summary.txt" "ci-logs/$destination/"
+          git -C ci-logs config user.name 'github-actions[bot]'
+          git -C ci-logs config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C ci-logs add "$destination"
+          git -C ci-logs commit -m "Publish playground testnet result for $CROC_SOURCE_SHA"
+          git -C ci-logs push origin HEAD:ci-logs
+
+      - name: Self-test exact private-key scanner
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          scanner_dir="$(mktemp -d "$RUNNER_TEMP/croc-playground-scanner.XXXXXX")"
+          trap 'rm -rf -- "$scanner_dir"' EXIT
+          fake_key="ed25519:$(printf '1%.0s' {1..88})"
+          fake_signature="ed25519:$(printf '2%.0s' {1..88})"
+          printf '{"private_key":"%s"}\n' "$fake_key" >"$scanner_dir/credential.json"
+          printf '%s\n' "$fake_key" >"$scanner_dir/needles"
+          printf 'contains %s\n' "$fake_key" >"$scanner_dir/match.log"
+          printf 'contains %s\n' "$fake_signature" >"$scanner_dir/signature.log"
+          grep -aFq -f "$scanner_dir/needles" "$scanner_dir/match.log" || { echo 'Exact-key scanner self-test failed: fake key was not detected.'; exit 1; }
+          if grep -aFq -f "$scanner_dir/needles" "$scanner_dir/signature.log"; then echo 'Exact-key scanner self-test failed: unrelated signature was detected.'; exit 1; fi
+          echo 'Exact-key scanner self-test passed with fake data.'
+
+      - name: Scan captured logs and outputs for exact credential values
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          key_matches="$RUNNER_TEMP/croc-playground-key-matches-$GITHUB_RUN_ID.txt"
+          : >"$key_matches"
+          chmod 600 "$key_matches"
+          while IFS= read -r -d '' credential; do
+            jq -er '.private_key // .secret_key // empty' "$credential" >>"$key_matches" 2>/dev/null || { echo 'Credential key extraction failed (exit code 1).'; exit 1; }
+          done < <(find "$CROC_KEY_DIR" -type f -name '*.json' -print0 2>/dev/null)
+          failed=0
+          while IFS= read -r -d '' file; do
+            if [[ -s "$key_matches" ]] && grep -aFq -f "$key_matches" "$file"; then printf 'Credential marker detected: file=%s marker=private-key-value\n' "$file"; failed=1; fi
+            for marker in private_key secret_key seed_phrase; do
+              if grep -aiFq -- "$marker" "$file"; then printf 'Credential marker detected: file=%s marker=%s\n' "$file" "$marker"; failed=1; fi
+            done
+          done < <(find "$CROC_RUN_DIR/logs" "$CROC_RUN_DIR/output" -type f -print0)
+          (( failed == 0 )) || { echo 'Credential marker scan failed (exit code 1).'; exit 1; }
+          echo 'Credential marker scan found no markers in captured logs or outputs.'
+
+      - name: Publish sanitized log tails to ci-logs
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          destination="testnet/playground/$GITHUB_SHA/$GITHUB_RUN_ID/logs"
+          sanitized_dir="$RUNNER_TEMP/croc-playground-sanitized"
+          key_matches="$RUNNER_TEMP/croc-playground-key-matches-$GITHUB_RUN_ID.txt"
+          mkdir -p "$sanitized_dir" "ci-logs/$destination"
+          while IFS= read -r -d '' file; do
+            name="$(basename "$file").tail.txt"
+            if [[ -s "$key_matches" ]]; then grep -aFv -f "$key_matches" "$file" || true; else cat "$file"; fi | grep -aEiv 'private_key|secret_key|seed_phrase' | tail -n 80 >"$sanitized_dir/$name" || true
+          done < <(find "$CROC_RUN_DIR/logs" "$CROC_RUN_DIR/output" -type f -print0 2>/dev/null || true)
+          shopt -s nullglob
+          files=("$sanitized_dir"/*)
+          if (( ${#files[@]} == 0 )); then printf 'No captured output was created.\n' >"$sanitized_dir/no-captured-output.txt"; files=("$sanitized_dir"/*); fi
+          cp "${files[@]}" "ci-logs/$destination/"
+          git -C ci-logs config user.name 'github-actions[bot]'
+          git -C ci-logs config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C ci-logs add "$destination"
+          if ! git -C ci-logs diff --cached --quiet; then git -C ci-logs commit -m "Publish sanitized playground run tails for $GITHUB_SHA"; git -C ci-logs push origin HEAD:ci-logs; fi
+
+      - name: Wipe runner credentials and verify removal
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          rm -rf -- "$CROC_KEY_DIR" "$CROC_PRIVATE_DIR" "$CROC_CLI_HOME"
+          rm -f -- "$RUNNER_TEMP/croc-playground-key-matches-$GITHUB_RUN_ID.txt"
+          [[ ! -e "$CROC_KEY_DIR" && ! -e "$CROC_PRIVATE_DIR" && ! -e "$CROC_CLI_HOME" ]] || { echo 'Credential cleanup failed (exit code 1).'; exit 1; }
+          echo 'Credential directories wiped and verified absent.'
