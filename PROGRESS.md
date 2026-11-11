@@ -12,7 +12,8 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 ## In progress
 
-- Milestone workflow reliability: the failed run `43024199638` recorded a block-timestamp RPC failure at the configured NEAR Testnet endpoint, but the sanitized log did not retain the HTTP status. The workflow is being updated with bounded RPC retries and boundary-based sleeps.
+- Milestone workflow reliability: bounded retries and boundary-based sleeps were committed as `0274a65` and pushed to `milestone`; Actions verification is pending.
+- Milestone FT event verification: `internal_transfer` emits a NEP-141 transfer; the redundant manual event was removed and an exactly-one-event unit test is included in the next milestone commit (Actions verification pending).
 - Adaptive-target evidence simulation and report are being prepared; this is a comparison only and is not contract logic.
 
 ## Not done
@@ -28,7 +29,7 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 ## Verification
 
-- Unit-test definitions: 32 existing plus 8 milestone tests (40 total).
+- Unit-test definitions: 32 existing plus 9 milestone tests (41 total; milestone event test awaits Actions verification).
 - Phase 1 final verified commit: `ab3c12db1e5c97934e09828c57bff333a04b97ca`.
 - Latest Phase 2 main CI: SHA `7fddc7bbf7b1bf7b69dcd174225574ba6017e584`; `40 passed; 0 failed`; Wasm build succeeded; actionlint step completed before tests.
 - Phase 2 simulation workflow: run `42984363756` for SHA `7fddc7bbf7b1bf7b69dcd174225574ba6017e584` completed successfully.

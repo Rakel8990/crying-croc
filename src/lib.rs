@@ -1,6 +1,6 @@
 use near_contract_standards::fungible_token::{
     core_impl::{Balance, FungibleToken},
-    events::{FtMint, FtTransfer},
+    events::FtMint,
     FungibleTokenCore,
     FungibleTokenResolver,
     metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC},
@@ -487,13 +487,6 @@ impl Contract {
                             moved,
                             Some("CROC milestone bonus escrow".to_string()),
                         );
-                        FtTransfer {
-                            old_owner_id: &self.contract_account_id,
-                            new_owner_id: &self.reward_escrow_account_id,
-                            amount: U128(moved),
-                            memo: Some("milestone bonus escrow"),
-                        }
-                        .emit();
                     }
                     env::log_str(&format!(
                         "EVENT_JSON:{{\"standard\":\"croc\",\"version\":\"1.0.0\",\"event\":\"milestone\",\"data\":[{{\"threshold\":{},\"moved\":\"{}\",\"per_checker\":\"{}\"}}]}}",

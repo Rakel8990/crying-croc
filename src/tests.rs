@@ -7,7 +7,7 @@ use near_contract_standards::{
 use near_sdk::{
     env,
     json_types::U128,
-    test_utils::VMContextBuilder,
+    test_utils::{get_logs, VMContextBuilder},
     testing_env,
     AccountId,
     NearToken,
@@ -742,6 +742,42 @@ fn one_checker_milestone_moves_exact_bonus_without_changing_supply() {
     assert_eq!(contract.treasury().0, treasury_before - moved);
     assert_eq!(contract.balance_of(escrow_account()).0, escrow_before + moved);
     assert_eq!(contract.total_supply().0, supply_before);
+}
+
+#[test]
+fn milestone_bonus_transfer_emits_exactly_one_nep141_transfer_event() {
+    let alice = account("alice.testnet");
+    let contract_account = account("croc.testnet");
+    let escrow = escrow_account();
+    let mut contract = new_contract(1);
+    contract.emission_pool = 0;
+    register(&mut contract, &alice);
+    for day in 0..6 {
+        check_in_as(&mut contract, &alice, day);
+        settle_as(&mut contract, day + 1);
+    }
+    check_in_as(&mut contract, &alice, 6);
+    let moved = contract.treasury().0 * 100 / 10_000;
+
+    set_context(&contract_account, 7);
+    contract.settle();
+
+    let transfer_logs: Vec<_> = get_logs()
+        .into_iter()
+        .filter(|line| {
+            line.starts_with("EVENT_JSON:")
+                && line.contains("\"standard\":\"nep141\"")
+                && line.contains("\"event\":\"ft_transfer\"")
+        })
+        .collect();
+    assert_eq!(transfer_logs.len(), 1, "one NEP-141 transfer log for the bonus move");
+    let event: serde_json::Value = serde_json::from_str(
+        transfer_logs[0].strip_prefix("EVENT_JSON:").unwrap(),
+    )
+    .unwrap();
+    assert_eq!(event["data"][0]["old_owner_id"], contract_account.as_str());
+    assert_eq!(event["data"][0]["new_owner_id"], escrow.as_str());
+    assert_eq!(event["data"][0]["amount"], moved.to_string());
 }
 
 #[test]
