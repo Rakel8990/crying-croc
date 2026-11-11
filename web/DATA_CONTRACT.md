@@ -11,13 +11,17 @@ This document describes the deployed contract's public **view** methods for the 
 | `current_streak` | `{}` | JSON decimal string (`U128`) |
 | `longest_streak` | `{}` | JSON decimal string (`U128`) |
 | `today_checkins` | `{}` | JSON decimal string (`U128`) |
+| `get_day` | `{"day":0}` | `null` if unsettled; otherwise `{"day":0,"checker_count":5,"success":true,"reward_per_checker":"<yoctoCROC>"}` |
+| `get_checkins` | `{"day":0}` | JSON integer (`u32`) |
+| `next_day_to_settle` | `{}` | JSON integer (`u64`) |
+| `account_progress` | `{"account_id":"alice.testnet"}` | `null` if unknown; otherwise `{"last_checkin_day":0,"resolved":false}` |
 | `emission_pool` | `{}` | JSON decimal string (`U128`), yoctoCROC |
 | `treasury` | `{}` | JSON decimal string (`U128`), yoctoCROC |
 | `ft_total_supply` | `{}` | JSON decimal string (`U128`), yoctoCROC |
 | `ft_balance_of` | `{"account_id":"alice.testnet"}` | JSON decimal string (`U128`), yoctoCROC |
 | `storage_balance_bounds` | `{}` | object `{"min":"<yoctoNEAR>","max":null}`; `max` is optional and may be a decimal string |
 | `storage_balance_of` | `{"account_id":"alice.testnet"}` | `null` if unregistered; otherwise object `{"total":"<yoctoNEAR>","available":"<yoctoNEAR>"}` |
-| `ft_metadata` | `{}` | object `{"spec":"<string>","name":"Crying Croc","symbol":"CROC","icon":null,"reference":null,"reference_hash":null,"decimals":18}` |
+| `ft_metadata` | `{}` | object `{"spec":"ft-1.0.0","name":"Crycodile","symbol":"CROC","icon":null,"reference":null,"reference_hash":null,"decimals":18}` |
 
 The `account_id` values must be valid NEAR account IDs. For `storage_balance_of`, registered accounts receive the NEP-145 balance object. `storage_balance_bounds` and `storage_balance_of` are provided by the `StorageManagement` implementation; `ft_metadata`, `ft_total_supply`, and `ft_balance_of` are provided by the corresponding standard traits.
 

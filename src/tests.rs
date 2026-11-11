@@ -1,4 +1,4 @@
-use super::Contract;
+use super::{AccountProgressView, Contract, DayView};
 use near_contract_standards::{
     fungible_token::core::FungibleTokenCore,
     fungible_token::metadata::FungibleTokenMetadataProvider,
@@ -59,6 +59,84 @@ fn ft_metadata_matches_project_token_metadata() {
     assert_eq!(metadata.symbol, "CROC");
     assert_eq!(metadata.decimals, 18);
     assert_eq!(metadata.icon, None);
+}
+
+#[test]
+fn get_day_returns_good_day_record_after_settlement() {
+    let alice = account("alice.testnet");
+    let mut contract = new_contract(1);
+    register(&mut contract, &alice);
+    check_in_as(&mut contract, &alice, 0);
+
+    settle_as(&mut contract, 1);
+
+    assert_eq!(contract.get_day(0), Some(DayView {
+        day: 0,
+        checker_count: 1,
+        success: true,
+        reward_per_checker: contract.reward_for_day(0),
+    }));
+    assert_eq!(contract.get_checkins(0), 1);
+    assert_eq!(contract.next_day_to_settle(), 1);
+}
+
+#[test]
+fn get_day_returns_missed_day_record_after_settlement() {
+    let alice = account("alice.testnet");
+    let mut contract = new_contract(2);
+    register(&mut contract, &alice);
+    check_in_as(&mut contract, &alice, 0);
+
+    settle_as(&mut contract, 1);
+
+    assert_eq!(contract.get_day(0), Some(DayView {
+        day: 0,
+        checker_count: 1,
+        success: false,
+        reward_per_checker: U128(0),
+    }));
+    assert_eq!(contract.get_checkins(0), 1);
+    assert_eq!(contract.next_day_to_settle(), 1);
+}
+
+#[test]
+fn get_day_is_none_before_settlement() {
+    let alice = account("alice.testnet");
+    let mut contract = new_contract(1);
+    register(&mut contract, &alice);
+    check_in_as(&mut contract, &alice, 0);
+
+    assert_eq!(contract.get_day(0), None);
+    assert_eq!(contract.get_checkins(0), 1);
+    assert_eq!(contract.next_day_to_settle(), 0);
+    assert_eq!(contract.account_progress(alice), Some(AccountProgressView {
+        last_checkin_day: 0,
+        resolved: false,
+    }));
+}
+
+#[test]
+fn account_progress_is_none_for_unknown_account() {
+    let contract = new_contract(1);
+
+    assert_eq!(contract.account_progress(account("unknown.testnet")), None);
+}
+
+#[test]
+fn account_progress_is_resolved_after_claim() {
+    let alice = account("alice.testnet");
+    let mut contract = new_contract(1);
+    register(&mut contract, &alice);
+    check_in_as(&mut contract, &alice, 0);
+    settle_as(&mut contract, 1);
+
+    set_context(&alice, 1);
+    contract.claim();
+
+    assert_eq!(contract.account_progress(alice), Some(AccountProgressView {
+        last_checkin_day: 0,
+        resolved: true,
+    }));
 }
 
 fn register(contract: &mut Contract, who: &AccountId) {

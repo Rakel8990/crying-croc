@@ -40,6 +40,22 @@ struct DaySettlement {
     burned: Balance,
 }
 
+#[near(serializers = [json])]
+#[derive(Debug, PartialEq, Eq)]
+pub struct DayView {
+    pub day: u64,
+    pub checker_count: u32,
+    pub success: bool,
+    pub reward_per_checker: U128,
+}
+
+#[near(serializers = [json])]
+#[derive(Debug, PartialEq, Eq)]
+pub struct AccountProgressView {
+    pub last_checkin_day: u64,
+    pub resolved: bool,
+}
+
 #[derive(BorshSerialize, BorshStorageKey)]
 #[borsh(crate = "near_sdk::borsh")]
 enum StorageKey {
@@ -209,6 +225,32 @@ impl Contract {
                 .get(&self.contract_account_id)
                 .unwrap_or(0),
         )
+    }
+
+    pub fn get_day(&self, day: u64) -> Option<DayView> {
+        self.day_settlements.get(&day).map(|settlement| DayView {
+            day,
+            checker_count: settlement.checker_count,
+            success: settlement.checker_count >= self.target,
+            reward_per_checker: U128(settlement.reward_per_checker),
+        })
+    }
+
+    pub fn get_checkins(&self, day: u64) -> u32 {
+        self.checkin_counts.get(&day).copied().unwrap_or(0)
+    }
+
+    pub fn next_day_to_settle(&self) -> u64 {
+        self.next_day_to_settle
+    }
+
+    pub fn account_progress(&self, account_id: AccountId) -> Option<AccountProgressView> {
+        self.account_progress
+            .get(&account_id)
+            .map(|progress| AccountProgressView {
+                last_checkin_day: progress.last_checkin_day,
+                resolved: progress.resolved,
+            })
     }
 
 }
