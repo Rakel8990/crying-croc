@@ -12,9 +12,8 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 ## In progress
 
-- Milestone workflow reliability: bounded retries and boundary-based sleeps were committed as `0274a65` and pushed to `milestone`; a 10-second finalized-block buffer was added in the current follow-up.
-- Milestone FT event verification: `internal_transfer` emits a NEP-141 transfer; the redundant manual event and import were removed. Its exactly-one-event test is included in `6c1b6cd` and covered by the matching successful 41-test CI report.
-- Adaptive-target evidence simulation and report are written in `scripts/simulate_adaptive_target.py` and `docs/simulation/adaptive_target.md`, with an SVG chart. The local PC has no Python runtime, and the existing Actions workflow does not run this script, so Python execution/output regeneration is unverified.
+- Milestone run `43071060718` for SHA `2c037c6f61beee38074947bb8a8c3522ed619a8e` failed the day-length read-back. The helper's status line was captured with the view result; the expected value was `300000000000`, and the captured value was `RPC attempt=1 status=200` followed by `300000000000`. The fix, stdout self-test and early pre-flight checks are pending Actions verification.
+- The adaptive-target simulation is now wired into the milestone simulation workflow to print its summary table and upload its CSVs and chart. The document must be checked against the next workflow-produced output.
 
 ## Not done
 
@@ -31,7 +30,7 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 - Unit-test definitions: 32 existing plus 9 milestone tests (41 total; milestone event test awaits Actions verification).
 - Phase 1 final verified commit: `ab3c12db1e5c97934e09828c57bff333a04b97ca`.
-- Latest Phase 2 main CI: SHA `6c1b6cd7bc349988e19f753ee46684fa31abd44c`; `41 passed; 0 failed`; Wasm build succeeded; actionlint step completed before tests.
+- Latest Phase 2 main CI before the current RPC and simulation-workflow edits: SHA `2c037c6f61beee38074947bb8a8c3522ed619a8e`; `41 passed; 0 failed`; Wasm build succeeded; actionlint step completed before tests.
 - Phase 2 simulation workflow: run `42984363756` for SHA `7fddc7bbf7b1bf7b69dcd174225574ba6017e584` completed successfully.
 - Earlier failed attempts: SHA `851ffb8` failed the added replay-file comparison because of a line-ending mismatch; SHA `f8d994a` and `7315b72` each had 39 passed and the replay test failed against a fixture that still had the old columns. The fixture and comparison setup were corrected; the latest matching reports above succeeded.
 - No Cargo command was run on this PC.

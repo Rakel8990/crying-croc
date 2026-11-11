@@ -21,11 +21,12 @@ jobs:
           set -euo pipefail
           output_dir="$RUNNER_TEMP/croc-milestone-simulation"
           python3 scripts/simulate_60_days.py --output-dir "$output_dir"
+          python3 scripts/simulate_adaptive_target.py --output-dir "$output_dir/adaptive_target"
           sed 's/\r$//' docs/simulation/replay_reference_milestones.csv > "$RUNNER_TEMP/replay-reference-expected.csv"
           sed 's/\r$//' "$output_dir/replay_reference.csv" > "$RUNNER_TEMP/replay-reference-actual.csv"
           diff -u "$RUNNER_TEMP/replay-reference-expected.csv" "$RUNNER_TEMP/replay-reference-actual.csv"
 
-      - name: Save CSV and PNG outputs
+      - name: Save simulation CSVs and charts
         uses: actions/upload-artifact@v4
         with:
           name: milestone-simulation-${{ github.sha }}

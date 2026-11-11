@@ -121,6 +121,44 @@ jobs:
           echo "$CROC_CLI_HOME/bin" >> "$GITHUB_PATH"
           printf 'near-cli-rs method=%s version=0.31.1\n' "$install_method"
 
+      - name: Self-test milestone RPC stdout capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          exec > >(tee -a "$CROC_RUN_DIR/logs/rpc-self-test.log") 2>&1
+          source "$GITHUB_WORKSPACE/scripts/milestone_rpc.sh"
+          fake_curl_dir="$CROC_RUN_DIR/fake-curl"
+          fake_response_file="$CROC_RUN_DIR/output/rpc-stdout-self-test.json"
+          fake_body='{"jsonrpc":"2.0","result":{"probe":"only-body"}}'
+          mkdir -p "$fake_curl_dir"
+          cat > "$fake_curl_dir/curl" <<'FAKE_CURL'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          output_file=""
+          while (($#)); do
+            if [[ "$1" == "--output" ]]; then
+              output_file="$2"
+              shift 2
+            else
+              shift
+            fi
+          done
+          [[ -n "$output_file" ]]
+          printf '%s' '{"jsonrpc":"2.0","result":{"probe":"only-body"}}' > "$output_file"
+          printf '200'
+          FAKE_CURL
+          chmod 700 "$fake_curl_dir/curl"
+          original_path="$PATH"
+          export PATH="$fake_curl_dir:$PATH"
+          fake_capture="$(rpc_post_to_file "RPC stdout self-test" '{}' "$fake_response_file")"
+          export PATH="$original_path"
+          [[ "$fake_capture" == "$fake_body" ]] || {
+            printf 'RPC stdout self-test failed: expected=%s actual=%s\n' "$fake_body" "$fake_capture"
+            exit 1
+          }
+          echo "RPC stdout self-test verified captured output contains only the fake response body."
+
       - name: Create fresh accounts, atomically deploy and initialize, then smoke test
         shell: bash
         run: |
@@ -129,18 +167,13 @@ jobs:
           umask 077
           export PATH="$CROC_CLI_HOME/bin:$PATH"
           exec > >(tee -a "$CROC_RUN_DIR/logs/run.log") 2>&1
+          source "$GITHUB_WORKSPACE/scripts/milestone_rpc.sh"
 
           account_suffix="${CROC_RUN_ID}-${CROC_RUN_ATTEMPT}"
           contract_id="croc-milestone-${account_suffix}.testnet"
           declare -a smoke_ids=()
           declare -a smoke_keys=()
           : > "$CROC_RUN_DIR/logs/deployment.log"
-
-          fail_step() {
-            local step_name="$1" exit_code="$2"
-            printf '%s failed (exit code %s).\n' "$step_name" "$exit_code" >&2
-            exit "$exit_code"
-          }
 
           create_faucet_account() {
             local label="$1" account_id="$2" key_dir="$CROC_KEY_DIR/$1"
@@ -198,42 +231,6 @@ jobs:
             printf '%s' "$tx_hash"
           }
 
-          rpc_post_to_file() {
-            local step_name="$1" request_body="$2" response_file="$3"
-            local attempt endpoint http_status curl_status retryable success=0 failure_code=1
-            for attempt in {1..6}; do
-              if (( attempt % 2 == 1 )); then endpoint="$NEAR_RPC"; else endpoint="$NEAR_RPC_FALLBACK"; fi
-              http_status="000"
-              if http_status="$(curl --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 30 --silent --show-error --output "$response_file" --write-out '%{http_code}' -H 'Content-Type: application/json' --data "$request_body" "$endpoint" 2>/dev/null)"; then
-                curl_status=0
-              else
-                curl_status=$?
-              fi
-              [[ "$http_status" =~ ^[0-9]{3}$ ]] || http_status="000"
-              printf 'RPC attempt=%d status=%s\n' "$attempt" "$http_status"
-              if (( curl_status == 0 )) && [[ "$http_status" == 2[0-9][0-9] ]]; then
-                success=1
-                break
-              fi
-              retryable=0
-              case "$http_status" in
-                408|429|5[0-9][0-9]) retryable=1; failure_code=$((10#$http_status));;
-              esac
-              case "$curl_status" in
-                6|7|18|28|35|52|55|56) retryable=1; failure_code="$curl_status";;
-              esac
-              if (( retryable == 0 )); then
-                failure_code="$curl_status"
-                (( curl_status == 0 )) && failure_code=$((10#$http_status))
-                fail_step "$step_name RPC request" "$failure_code"
-              fi
-              if (( attempt < 6 )); then sleep "$((1 << (attempt - 1)))"; fi
-            done
-            (( success == 1 )) || fail_step "$step_name RPC request" "$failure_code"
-            [[ -s "$response_file" ]] || fail_step "$step_name RPC response" 5
-            jq -e . "$response_file" >/dev/null 2>&1 || fail_step "$step_name RPC JSON validation" 5
-          }
-
           checked_jq() {
             local step_name="$1" json_file="$2" filter="$3" exit_code
             [[ -s "$json_file" ]] || fail_step "$step_name JSON input" 5
@@ -246,24 +243,34 @@ jobs:
           }
 
           view_method() {
-            local account_id="$1" method="$2" args="$3" args_b64 body response_file
+            local account_id="$1" method="$2" args="$3" args_b64 body response_file rpc_response exit_code
             args_b64="$(printf '%s' "$args" | base64 -w 0)"
             body="$(jq -cn --arg account_id "$account_id" --arg method "$method" --arg args "$args_b64" '{jsonrpc:"2.0",id:"croc-milestone-view",method:"query",params:{request_type:"call_function",finality:"final",account_id:$account_id,method_name:$method,args_base64:$args}}')"
             response_file="$CROC_RUN_DIR/output/rpc-view-${method}.json"
-            rpc_post_to_file "view:$method" "$body" "$response_file"
-            checked_jq "view:$method" "$response_file" '[.result.result[]] | implode | fromjson'
+            rpc_response="$(rpc_post_to_file "view:$method" "$body" "$response_file")"
+            if printf '%s' "$rpc_response" | jq -er '[.result.result[]] | implode | fromjson'; then
+              :
+            else
+              exit_code=$?
+              fail_step "view:$method JSON extraction" "$exit_code"
+            fi
           }
 
           block_timestamp_ns() {
-            local response_file="$CROC_RUN_DIR/output/rpc-block.json"
-            rpc_post_to_file "block timestamp" '{"jsonrpc":"2.0","id":"croc-milestone-block","method":"block","params":{"finality":"final"}}' "$response_file"
-            checked_jq "block timestamp" "$response_file" '.result.header.timestamp_nanosec | tonumber'
+            local response_file="$CROC_RUN_DIR/output/rpc-block.json" rpc_response exit_code
+            rpc_response="$(rpc_post_to_file "block timestamp" '{"jsonrpc":"2.0","id":"croc-milestone-block","method":"block","params":{"finality":"final"}}' "$response_file")"
+            if printf '%s' "$rpc_response" | jq -er '.result.header.timestamp_nanosec | tonumber'; then
+              :
+            else
+              exit_code=$?
+              fail_step "block timestamp JSON extraction" "$exit_code"
+            fi
           }
 
           tx_status() {
             local tx_hash="$1" signer_id="$2" response_file="$3" body
             body="$(jq -cn --arg hash "$tx_hash" --arg signer "$signer_id" '{jsonrpc:"2.0",id:"croc-milestone-tx",method:"EXPERIMENTAL_tx_status",params:[$hash,$signer]}')"
-            rpc_post_to_file "transaction status" "$body" "$response_file"
+            rpc_post_to_file "transaction status" "$body" "$response_file" >/dev/null
           }
 
           record_receipt_gas() {
@@ -298,11 +305,28 @@ jobs:
           deploy_status_file="$CROC_RUN_DIR/output/tx-deploy-init.json"
           tx_status "$deploy_hash" "$contract_id" "$deploy_status_file"
           checked_jq "atomic deploy action verification" "$deploy_status_file" '.result.transaction.actions | length == 2 and .[0].DeployContract != null and .[1].FunctionCall.method_name == "new"' >/dev/null
-          record_receipt_gas "atomic_deploy_and_new" "$deploy_hash" "$contract_id"
           readback_day_length="$(view_method "$contract_id" day_length_ns '{}')"
-          [[ "$readback_day_length" == "$CROC_DAY_LENGTH_NS" ]] || fail_step "day_length_ns read-back assertion" 1
           readback_target="$(view_method "$contract_id" target '{}')"
-          [[ "$readback_target" == "$CROC_TARGET" ]] || fail_step "target read-back assertion" 1
+          readback_treasury="$(view_method "$contract_id" treasury '{}')"
+          readback_milestones="$(view_method "$contract_id" milestones_paid '{}')"
+          if [[ "$readback_day_length" != "$CROC_DAY_LENGTH_NS" ]]; then
+            printf 'day_length_ns read-back mismatch: expected=%s actual=%s\n' "$CROC_DAY_LENGTH_NS" "$readback_day_length"
+            fail_step "day_length_ns read-back assertion" 1
+          fi
+          if [[ "$readback_target" != "$CROC_TARGET" ]]; then
+            printf 'target read-back mismatch: expected=%s actual=%s\n' "$CROC_TARGET" "$readback_target"
+            fail_step "target read-back assertion" 1
+          fi
+          if [[ "$readback_treasury" != "300000000000000000000000000" ]]; then
+            printf 'treasury read-back mismatch: expected=300000000000000000000000000 actual=%s\n' "$readback_treasury"
+            fail_step "treasury read-back assertion" 1
+          fi
+          if [[ "$readback_milestones" != '[false,false,false,false]' ]]; then
+            printf 'milestones_paid read-back mismatch: expected=[false,false,false,false] actual=%s\n' "$readback_milestones"
+            fail_step "milestones_paid read-back assertion" 1
+          fi
+          record_receipt_gas "atomic_deploy_and_new" "$deploy_hash" "$contract_id"
+          echo "Pre-flight read-backs verified: day_length_ns=$readback_day_length target=$readback_target treasury=$readback_treasury milestones_paid=$readback_milestones"
           echo "copy=$CROC_COPY day_length_ns=$CROC_DAY_LENGTH_NS target=$CROC_TARGET"
           echo "contract_account_id=$contract_id"
           echo "atomic_deploy_and_new_tx=$deploy_hash actions=2"
@@ -442,7 +466,7 @@ jobs:
           }
           contract_account_body="$(jq -cn --arg account_id "$contract_id" '{jsonrpc:"2.0",id:"croc-milestone-account",method:"query",params:{request_type:"view_account",finality:"final",account_id:$account_id}}')"
           contract_account_file="$CROC_RUN_DIR/output/rpc-contract-account.json"
-          rpc_post_to_file "contract account balance" "$contract_account_body" "$contract_account_file"
+          rpc_post_to_file "contract account balance" "$contract_account_body" "$contract_account_file" >/dev/null
           contract_native_balance="$(checked_jq "contract account balance" "$contract_account_file" '.result.amount')"
           printf 'label,tx_hash,transaction_gas_burnt,receipt_gas_burnt,transaction_tokens_burnt_yoctoNEAR,transaction_tokens_burnt_NEAR,receipt_tokens_burnt_yoctoNEAR,receipt_tokens_burnt_NEAR\n' > "$CROC_RUN_DIR/output/gas.csv"
           while IFS=$'\t' read -r label tx_hash tx_gas receipt_gas tx_tokens receipt_tokens; do

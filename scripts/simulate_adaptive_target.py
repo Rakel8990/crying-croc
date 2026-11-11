@@ -235,6 +235,14 @@ def main():
         writer.writeheader()
         writer.writerows(challenges)
     write_chart(args.output_dir / "adaptive_target.svg", all_rows)
+    print("\nAdaptive target summary (60 days)")
+    print("| Scenario | Wallets | Rule | Missed days | Treasury burned (CROC) | Days to recover |")
+    print("|---|---:|:---:|---:|---:|---:|")
+    for summary in summaries:
+        print(
+            "| {scenario} | {crowd_wallets} | {policy} | {missed_days} | "
+            "{treasury_burned_croc} | {days_to_recover_after_first_miss} |".format(**summary)
+        )
     print(f"wrote {len(all_rows)} daily rows to {daily_path}")
     print(f"wrote {len(summaries)} policy summaries to {summary_path}")
     print(f"wrote weekly challenge cases to {challenge_path}")
