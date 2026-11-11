@@ -18,7 +18,7 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 - The playground workflow has not been dispatched. No deployment was run as part of this update.
 - Phase 2.4: a manual-only milestone testnet workflow is written on the `milestone` branch. It uses five faucet-funded checkers, fast settings, verifies seven consecutive daily settlements and the day-seven bonus, claims the combined reward, and checks the next day does not pay another bonus. It publishes only to `ci-logs`; it has not been dispatched.
-- Phase 2.3: simulation and replay now model the one-time streak bonuses, track daily escrow and treasury, and generate separate treasury charts. A milestone-only workflow runs the script, compares a supplemental replay fixture outside the protected simulation-results directory, and saves the CSV/PNG output as an Actions artifact. Matching Actions verification is pending.
+- Phase 2.3: simulation and replay now model the one-time streak bonuses, track daily escrow and treasury, and generate separate treasury charts. The first replay run failed because the supplemental CSV still had the old columns; that fixture has been regenerated with the bonus, escrow, and supply fields. A milestone-only workflow runs the script, compares the supplemental fixture, and saves CSV/PNG output as an Actions artifact. Matching Actions verification is pending.
 - A day-50 milestone is not specified: the provided schedule gives rates only for days 7, 15, 25, and 100. No rate was invented.
 - Testnet settle gas measurement remains outstanding.
 - The probe testnet run was reported as successful in the handoff, but its run ID is not recorded in the available repository notes.
@@ -27,4 +27,5 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 - Unit-test definitions: 32 existing plus 8 milestone tests (40 total); the latest milestone source SHA awaits Actions.
 - Phase 1 final verified commit: `ab3c12db1e5c97934e09828c57bff333a04b97ca`.
+- Phase 2 CI report for `f8d994a9795bcb09474c2f7b131c156e0566f812`: 39 passed, 1 failed; replay fixture columns did not match the updated model. Correction is pending Actions verification.
 - No Cargo command was run on this PC.
