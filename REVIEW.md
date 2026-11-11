@@ -22,7 +22,9 @@ No owner or administrator role exists. Init arguments are immutable.
 | `check_in()` | A registered caller, at most once per day, after clearing any settlement backlog. Pays a prior unresolved reward before recording today's check-in. |
 | `settle()` | Anyone; processes up to seven elapsed days in order. |
 | `claim()` | A registered caller with an unresolved settled reward, after clearing any backlog. |
-| `day_length_ns()`, `target()`, `current_streak()`, `longest_streak()`, `today_checkins()`, `emission_pool()`, `treasury()` | Public read-only views; any caller. |
+| `day_length_ns()`, `target()`, `current_streak()`, `longest_streak()`, `today_checkins()`, `emission_pool()`, `treasury()`, `milestones_paid()` | Public read-only views; any caller. |
+| `get_day(day)` | Public read-only settled-day view with the original fields; any caller. |
+| `get_day_with_bonus(day)` | Public read-only settled-day view including the per-checker milestone bonus; any caller. |
 | `ft_transfer(receiver_id, amount, memo)` | Registered token holder; NEP-141 requires one yoctoNEAR. Treasury and derived reward escrow cannot send. Receiver must be registered. |
 | `ft_transfer_call(receiver_id, amount, memo, msg)` | Same caller and deposit rules as `ft_transfer`; asynchronous receiver call is resolved through the private callback. Treasury and derived escrow cannot send. |
 | `ft_total_supply()`, `ft_balance_of(account_id)` | Public NEP-141 read-only views. |
@@ -44,6 +46,7 @@ The expected accounting identity is `total_supply = treasury balance + reward es
 - **Reward escrow:** RULES.md specifies lazy payment but does not prescribe an escrow account. The account is derived as `escrow.` plus the contract account ID (for example, `escrow.croc.testnet`); earned checker rewards are minted there and transferred to each user on their next check-in or `claim()`. The treasury and derived escrow are both blocked from initiating ordinary FT transfers; escrow can only pay through `resolve_pending_reward`.
 - **Unregister burn:** NEP-141 standard storage unregistration removes a caller's remaining token balance. This implementation emits the standard burn event for that balance. RULES.md requires refusing unregistration during an unresolved reward but does not describe what happens to an otherwise eligible unregistering holder's balance.
 - **Additional settlement record fields:** Each day record also retains success, treasury-minted amount, and burned amount for the emitted settlement event, alongside the checker count and per-checker reward described in the design.
+- **Streak milestones:** On successful streaks 7, 15, 25, and 100, the contract moves respectively 100, 150, 250, and 500 basis points of the treasury to reward escrow, floors the amount per checker, and marks the milestone paid once. This bonus schedule is an added approved project decision; it is not specified in `RULES.md`. `get_day_with_bonus` exposes the bonus amount and `milestones_paid` exposes the four paid flags.
 
 No other intentional change to the CROC arithmetic or user rules is known. There is no admin or upgrade method.
 
@@ -74,7 +77,15 @@ No other intentional change to the CROC arithmetic or user rules is known. There
 - `treasury_cannot_transfer_with_ft_transfer_call` — rejects a treasury transfer-call with the expected burn-only message.
 - `claim_moves_exactly_the_recorded_reward_from_escrow_to_claimer` — verifies the first claim credits exactly the recorded reward and debits escrow by the same amount.
 - `supply_matches_treasury_escrow_and_holders_after_day_claim_and_transfer` — checks supply components after mint, claim, burn, and user transfer.
-- `sixty_day_replay_matches_independent_reference_and_simulation_csv` — compares 60 daily contract settlements against independent Rust integer calculations and the checked-in simulation reference CSV.
+- `sixty_day_replay_matches_independent_reference_and_simulation_csv` — compares 60 daily contract settlements, claims, bonus transfers, escrow, treasury, supply, and streak against independent Rust integer calculations and the checked-in script-generated replay CSV.
+- `milestone_bonus_is_paid_only_at_streaks_7_15_25_and_100` — verifies the configured four streak thresholds, exact basis-point rates, treasury reductions, and paid flags.
+- `climbing_to_streak_seven_again_does_not_pay_the_milestone_twice` — verifies a previously paid threshold cannot pay again after a reset.
+- `one_checker_milestone_moves_exact_bonus_without_changing_supply` — checks the exact one-checker transfer from treasury to escrow.
+- `many_checker_milestone_floors_per_checker_and_keeps_dust_in_treasury` — verifies per-checker flooring leaves untransferred dust in treasury.
+- `claim_pays_daily_reward_and_milestone_bonus_exactly_once` — checks a claim pays the base reward and bonus once from escrow.
+- `next_check_in_lazily_pays_daily_reward_and_milestone_bonus` — checks the next check-in resolves the prior base reward and bonus.
+- `rounded_zero_milestone_bonus_is_marked_paid_and_never_exceeds_treasury` — verifies a rounded-to-zero bonus still marks the threshold paid and cannot exceed treasury.
+- `missed_day_never_pays_a_milestone_bonus` — verifies misses do not pay or mark a milestone.
 
 ## Known limitations
 

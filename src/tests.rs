@@ -563,6 +563,9 @@ fn sixty_day_replay_matches_independent_reference_and_simulation_csv() {
     let mut holder_balances = vec![0_u128; PARTICIPANTS];
     let mut unresolved = vec![None::<u128>; PARTICIPANTS];
     let (mut streak, mut longest) = (0_u64, 0_u64);
+    let milestone_thresholds = [7_u64, 15, 25, 100];
+    let milestone_bps = [100_u128, 150, 250, 500];
+    let mut milestones_paid = [false; 4];
 
     for (day_index, (day_number, count)) in schedule.iter().copied().enumerate() {
         assert_eq!(day_number, day_index as u64 + 1);
@@ -581,6 +584,9 @@ fn sixty_day_replay_matches_independent_reference_and_simulation_csv() {
         let mut treasury_minted = 0_u128;
         let mut checker_minted = 0_u128;
         let mut burned = 0_u128;
+        let mut milestone_bonus_total = 0_u128;
+        let mut milestone_bonus_per_checker = 0_u128;
+        let mut milestone_bonus_moved = 0_u128;
         let successful = count >= TARGET;
         let reward_per_checker = if successful {
             pot = pool / 200;
@@ -593,7 +599,17 @@ fn sixty_day_replay_matches_independent_reference_and_simulation_csv() {
             escrow += checker_minted;
             streak += 1;
             longest = longest.max(streak);
-            per_checker
+            if let Some(index) = milestone_thresholds.iter().position(|threshold| *threshold == streak) {
+                if !milestones_paid[index] {
+                    milestones_paid[index] = true;
+                    milestone_bonus_total = treasury * milestone_bps[index] / 10_000;
+                    milestone_bonus_per_checker = milestone_bonus_total / u128::from(count);
+                    milestone_bonus_moved = milestone_bonus_per_checker * u128::from(count);
+                    treasury -= milestone_bonus_moved;
+                    escrow += milestone_bonus_moved;
+                }
+            }
+            per_checker + milestone_bonus_per_checker
         } else {
             burned = treasury * 5 / 100;
             treasury -= burned;
@@ -610,6 +626,7 @@ fn sixty_day_replay_matches_independent_reference_and_simulation_csv() {
         assert!(reference_supply <= 1_000_000_000 * ONE_TOKEN);
         assert_eq!(contract.emission_pool().0, pool, "pool after day {day_number}");
         assert_eq!(contract.treasury().0, treasury, "treasury after day {day_number}");
+        assert_eq!(contract.balance_of(escrow_account()).0, escrow, "escrow after day {day_number}");
         assert_eq!(contract.total_supply().0, reference_supply, "supply after day {day_number}");
         assert_eq!(contract.streak().0, u128::from(streak), "streak after day {day_number}");
         assert_eq!(contract.longest_streak().0, u128::from(longest), "longest streak after day {day_number}");
@@ -629,11 +646,23 @@ fn sixty_day_replay_matches_independent_reference_and_simulation_csv() {
         assert_eq!(csv[4].parse::<u128>().unwrap(), treasury_minted);
         assert_eq!(csv[5].parse::<u128>().unwrap(), checker_minted);
         assert_eq!(csv[6].parse::<u128>().unwrap(), burned);
-        assert_eq!(csv[7].parse::<u128>().unwrap(), pool);
-        assert_eq!(csv[8].parse::<u128>().unwrap(), treasury);
-        assert_eq!(csv[9].parse::<u128>().unwrap(), reference_supply);
-        assert_eq!(csv[10].parse::<u64>().unwrap(), streak);
-        assert_eq!(csv[11].parse::<u64>().unwrap(), longest);
+        assert_eq!(csv[7].parse::<u128>().unwrap(), milestone_bonus_total);
+        assert_eq!(csv[8].parse::<u128>().unwrap(), milestone_bonus_per_checker);
+        assert_eq!(csv[9].parse::<u128>().unwrap(), milestone_bonus_moved);
+        assert_eq!(csv[10].parse::<u128>().unwrap(), pool);
+        assert_eq!(csv[11].parse::<u128>().unwrap(), treasury);
+        assert_eq!(csv[12].parse::<u128>().unwrap(), escrow);
+        assert_eq!(csv[13].parse::<u128>().unwrap(), reference_supply);
+        assert_eq!(csv[14].parse::<u64>().unwrap(), streak);
+        assert_eq!(csv[15].parse::<u64>().unwrap(), longest);
+        assert_eq!(csv[16], milestones_paid.map(|paid| if paid { '1' } else { '0' }).iter().collect::<String>());
+        let settled = contract.get_day_with_bonus(day_index as u64).expect("settled day is recorded");
+        assert_eq!(settled.bonus_per_checker.0, milestone_bonus_per_checker);
+        assert_eq!(
+            settled.reward_per_checker.0,
+            if successful { checker_minted / u128::from(count) } else { 0 },
+            "base reward per checker after day {day_number}"
+        );
     }
 }
 

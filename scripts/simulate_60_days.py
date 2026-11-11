@@ -15,6 +15,9 @@ TOKEN = 10**18
 INITIAL_TREASURY = 300_000_000 * TOKEN
 INITIAL_POOL = 700_000_000 * TOKEN
 MAX_SUPPLY = 1_000_000_000 * TOKEN
+MILESTONE_STREAKS = (7, 15, 25, 100)
+MILESTONE_BPS = (100, 150, 250, 500)
+BP_DENOMINATOR = 10_000
 SCENARIOS = ("steady", "hype_fades", "weekend_dips", "bots_from_day_1")
 
 
@@ -37,13 +40,15 @@ def daily_checkins(scenario, crowd, day):
 
 
 def settle_day(state, checkins, target):
-    """Apply the same floor-based mint/burn formulas as RULES.md."""
+    """Apply floor-based daily formulas and the configured one-time bonuses."""
     pool = state["pool"]
     treasury = state["treasury"]
     escrow = state["escrow"]
     streak = state["streak"]
     longest = state["longest_streak"]
-    pot = treasury_mint = checker_mint = burn = dust = 0
+    milestones_paid = state["milestones_paid"][:]
+    pot = treasury_mint = checker_mint = burn = dust = reward_per_checker = 0
+    bonus_total = bonus_per_checker = bonus_moved = 0
 
     if checkins >= target:
         pot = pool // 200
@@ -51,12 +56,23 @@ def settle_day(state, checkins, target):
         checker_part = pot * 90 // 100
         per_checker = checker_part // checkins
         checker_mint = per_checker * checkins
+        reward_per_checker = per_checker
         dust = pot - treasury_mint - checker_mint
         pool -= pot
         treasury += treasury_mint
         escrow += checker_mint
         streak += 1
         longest = max(longest, streak)
+        if streak in MILESTONE_STREAKS:
+            milestone_index = MILESTONE_STREAKS.index(streak)
+            if not milestones_paid[milestone_index]:
+                milestones_paid[milestone_index] = True
+                bonus_total = treasury * MILESTONE_BPS[milestone_index] // BP_DENOMINATOR
+                bonus_per_checker = bonus_total // checkins
+                bonus_moved = bonus_per_checker * checkins
+                reward_per_checker += bonus_per_checker
+                treasury -= bonus_moved
+                escrow += bonus_moved
     else:
         burn = treasury * 5 // 100
         treasury -= burn
@@ -73,19 +89,25 @@ def settle_day(state, checkins, target):
         "supply": supply,
         "streak": streak,
         "longest_streak": longest,
+        "milestones_paid": milestones_paid,
     }
     detail = {
         "pot_yocto": pot,
         "treasury_minted_yocto": treasury_mint,
         "checker_minted_yocto": checker_mint,
+        "reward_per_checker_yocto": reward_per_checker,
         "burned_yocto": burn,
         "dust_not_minted_yocto": dust,
+        "milestone_bonus_total_yocto": bonus_total,
+        "milestone_bonus_per_checker_yocto": bonus_per_checker,
+        "milestone_bonus_moved_yocto": bonus_moved,
         "pool_yocto": pool,
         "treasury_yocto": treasury,
         "escrow_yocto": escrow,
         "total_supply_yocto": supply,
         "streak": streak,
         "longest_streak": longest,
+        "milestones_paid": "".join("1" if paid else "0" for paid in milestones_paid),
     }
     return next_state, detail
 
@@ -98,6 +120,7 @@ def run_scenario(scenario, crowd, target):
         "supply": INITIAL_TREASURY,
         "streak": 0,
         "longest_streak": 0,
+        "milestones_paid": [False, False, False, False],
     }
     rows = []
     for day in range(1, DAY_COUNT + 1):
@@ -125,8 +148,11 @@ def run_replay_schedule(schedule_path, target):
         "supply": INITIAL_TREASURY,
         "streak": 0,
         "longest_streak": 0,
+        "milestones_paid": [False, False, False, False],
     }
     rows = []
+    pending_rewards = [None] * 60
+    holder_balances = [0] * 60
     with schedule_path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         for expected_day, row in enumerate(reader, start=1):
@@ -134,7 +160,20 @@ def run_replay_schedule(schedule_path, target):
             checkins = int(row["checkins"])
             if day != expected_day:
                 raise ValueError("replay schedule days must be consecutive from day 1")
+            if not 0 <= checkins <= len(pending_rewards):
+                raise ValueError("replay check-ins must fit the 60 test accounts")
+            for participant in range(checkins):
+                pending = pending_rewards[participant]
+                if pending is not None:
+                    state["escrow"] -= pending
+                    holder_balances[participant] += pending
+                    pending_rewards[participant] = None
             state, result = settle_day(state, checkins, target)
+            for participant in range(checkins):
+                pending_rewards[participant] = result["reward_per_checker_yocto"]
+            state["supply"] = state["treasury"] + state["escrow"] + sum(holder_balances)
+            if state["supply"] > MAX_SUPPLY:
+                raise AssertionError("replay exceeded the 1B CROC supply limit")
             rows.append({
                 "day": day,
                 "checkins": checkins,
@@ -143,11 +182,16 @@ def run_replay_schedule(schedule_path, target):
                 "treasury_minted_yocto": result["treasury_minted_yocto"],
                 "checker_minted_yocto": result["checker_minted_yocto"],
                 "burned_yocto": result["burned_yocto"],
+                "milestone_bonus_total_yocto": result["milestone_bonus_total_yocto"],
+                "milestone_bonus_per_checker_yocto": result["milestone_bonus_per_checker_yocto"],
+                "milestone_bonus_moved_yocto": result["milestone_bonus_moved_yocto"],
                 "pool_yocto": state["pool"],
                 "treasury_yocto": state["treasury"],
+                "escrow_yocto": state["escrow"],
                 "total_supply_yocto": state["supply"],
                 "streak": state["streak"],
                 "longest_streak": state["longest_streak"],
+                "milestones_paid": result["milestones_paid"],
             })
     if len(rows) != DAY_COUNT:
         raise ValueError(f"replay schedule must have exactly {DAY_COUNT} days")
@@ -268,7 +312,7 @@ COLORS = (
 )
 
 
-def write_chart(path, scenario, series):
+def write_chart(path, scenario, metric, series):
     width, height = 1200, 720
     canvas = Canvas(width, height)
     left, right, top, bottom = 105, 830, 105, 610
@@ -281,7 +325,7 @@ def write_chart(path, scenario, series):
     if upper <= lower:
         upper = lower + 1
 
-    canvas.text(85, 25, f"{scenario.replace('_', ' ')} - TOTAL SUPPLY", scale=3)
+    canvas.text(85, 25, f"{scenario.replace('_', ' ')} - {metric}", scale=3)
     canvas.text(85, 70, "M CROC", color=(90, 95, 100), scale=2)
     for tick in range(6):
         y = top + (bottom - top) * tick // 5
@@ -336,6 +380,7 @@ def main():
     for scenario in SCENARIOS:
         scenario_rows = []
         series = []
+        treasury_series = []
         color_index = 0
         for crowd in CROWD_SIZES:
             for target in TARGETS:
@@ -343,9 +388,12 @@ def main():
                 scenario_rows.extend(rows)
                 millions = [row["total_supply_yocto"] // 10**24 for row in rows]
                 series.append((millions, f"N={crowd} T={target}", COLORS[color_index]))
+                treasury_millions = [row["treasury_yocto"] // 10**24 for row in rows]
+                treasury_series.append((treasury_millions, f"N={crowd} T={target}", COLORS[color_index]))
                 color_index += 1
         write_csv(args.output_dir / f"{scenario}.csv", scenario_rows)
-        write_chart(args.output_dir / f"{scenario}.png", scenario, series)
+        write_chart(args.output_dir / f"{scenario}.png", scenario, "TOTAL SUPPLY", series)
+        write_chart(args.output_dir / f"{scenario}_treasury.png", scenario, "TREASURY", treasury_series)
 
     replay_rows = run_replay_schedule(args.replay_schedule, target=40)
     write_csv(args.output_dir / "replay_reference.csv", replay_rows)
@@ -357,10 +405,11 @@ def main():
         f"total_supply_yocto={final['total_supply_yocto']}",
         f"streak={final['streak']}",
         f"longest_streak={final['longest_streak']}",
+        f"milestones_paid={final['milestones_paid']}",
     ]) + "\n"
     (args.output_dir / "replay_summary.txt").write_text(summary, encoding="utf-8")
     print(summary, end="")
-    print(f"Wrote four scenario CSV files and four PNG charts to {args.output_dir}")
+    print(f"Wrote four scenario CSV files and eight PNG charts to {args.output_dir}")
 
 
 if __name__ == "__main__":
