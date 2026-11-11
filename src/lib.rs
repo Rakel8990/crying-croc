@@ -1,6 +1,6 @@
 use near_contract_standards::fungible_token::{
     core_impl::{Balance, FungibleToken},
-    events::FtMint,
+    events::{FtMint, FtTransfer},
     FungibleTokenCore,
     FungibleTokenResolver,
     metadata::{FungibleTokenMetadata, FungibleTokenMetadataProvider, FT_METADATA_SPEC},
@@ -24,6 +24,9 @@ use near_sdk::{
 const TOKEN_DECIMALS: u8 = 18;
 const INITIAL_TREASURY: Balance = 300_000_000 * 1_000_000_000_000_000_000;
 const INITIAL_POOL: Balance = 700_000_000 * 1_000_000_000_000_000_000;
+const MILESTONE_STREAKS: [u64; 4] = [7, 15, 25, 100];
+const MILESTONE_BPS: [Balance; 4] = [100, 150, 250, 500];
+const BASIS_POINTS_DENOMINATOR: Balance = 10_000;
 
 #[near(serializers = [borsh])]
 struct AccountProgress {
@@ -35,6 +38,7 @@ struct AccountProgress {
 struct DaySettlement {
     checker_count: u32,
     reward_per_checker: Balance,
+    bonus_per_checker: Balance,
     succeeded: bool,
     minted_to_treasury: Balance,
     burned: Balance,
@@ -47,6 +51,25 @@ pub struct DayView {
     pub checker_count: u32,
     pub success: bool,
     pub reward_per_checker: U128,
+}
+
+#[near(serializers = [json])]
+#[derive(Debug, PartialEq, Eq)]
+pub struct DayViewWithBonus {
+    pub day: u64,
+    pub checker_count: u32,
+    pub success: bool,
+    pub reward_per_checker: U128,
+    pub bonus_per_checker: U128,
+}
+
+impl PartialEq<DayView> for DayViewWithBonus {
+    fn eq(&self, other: &DayView) -> bool {
+        self.day == other.day
+            && self.checker_count == other.checker_count
+            && self.success == other.success
+            && self.reward_per_checker == other.reward_per_checker
+    }
 }
 
 #[near(serializers = [json])]
@@ -78,6 +101,7 @@ pub struct Contract {
     emission_pool: Balance,
     current_streak: u64,
     longest_streak: u64,
+    milestones_paid: [bool; 4],
     next_day_to_settle: u64,
     checkin_counts: LookupMap<u64, u32>,
     account_progress: LookupMap<AccountId, AccountProgress>,
@@ -115,6 +139,7 @@ impl Contract {
             emission_pool: INITIAL_POOL,
             current_streak: 0,
             longest_streak: 0,
+            milestones_paid: [false; 4],
             next_day_to_settle: env::block_timestamp() / day_length_ns,
             checkin_counts: LookupMap::new(StorageKey::CheckinCounts),
             account_progress: LookupMap::new(StorageKey::AccountProgress),
@@ -227,12 +252,13 @@ impl Contract {
         )
     }
 
-    pub fn get_day(&self, day: u64) -> Option<DayView> {
-        self.day_settlements.get(&day).map(|settlement| DayView {
+    pub fn get_day(&self, day: u64) -> Option<DayViewWithBonus> {
+        self.day_settlements.get(&day).map(|settlement| DayViewWithBonus {
             day,
             checker_count: settlement.checker_count,
             success: settlement.checker_count >= self.target,
             reward_per_checker: U128(settlement.reward_per_checker),
+            bonus_per_checker: U128(settlement.bonus_per_checker),
         })
     }
 
@@ -251,6 +277,10 @@ impl Contract {
                 last_checkin_day: progress.last_checkin_day,
                 resolved: progress.resolved,
             })
+    }
+
+    pub fn milestones_paid(&self) -> [bool; 4] {
+        self.milestones_paid
     }
 
 }
@@ -285,9 +315,15 @@ impl Contract {
             return 0;
         }
 
-        let settlement = self.day_settlements.get(&day);
-        assert!(settlement.is_some(), "reward day is not settled yet");
-        let reward = settlement.unwrap().reward_per_checker;
+        let (day_reward, day_bonus) = {
+            let settlement = self.day_settlements.get(&day);
+            assert!(settlement.is_some(), "reward day is not settled yet");
+            let settlement = settlement.unwrap();
+            (settlement.reward_per_checker, settlement.bonus_per_checker)
+        };
+        let reward = day_reward
+            .checked_add(day_bonus)
+            .expect("combined reward amount overflow");
         if reward > 0 {
             self.token.internal_transfer(
                 &self.reward_escrow_account_id,
@@ -388,12 +424,54 @@ impl Contract {
             };
 
         let old_streak = self.current_streak;
+        let mut bonus_per_checker = 0;
         if succeeded {
             self.current_streak = self
                 .current_streak
                 .checked_add(1)
                 .expect("streak overflow");
             self.longest_streak = self.longest_streak.max(self.current_streak);
+            if let Some(index) = MILESTONE_STREAKS
+                .iter()
+                .position(|threshold| *threshold == self.current_streak)
+            {
+                if !self.milestones_paid[index] {
+                    self.milestones_paid[index] = true;
+                    let treasury_for_bonus = self
+                        .token
+                        .accounts
+                        .get(&self.contract_account_id)
+                        .unwrap_or(0);
+                    let bonus_total = treasury_for_bonus
+                        .checked_mul(MILESTONE_BPS[index])
+                        .expect("milestone bonus calculation overflow")
+                        / BASIS_POINTS_DENOMINATOR;
+                    bonus_per_checker = bonus_total / u128::from(checker_count);
+                    let moved = bonus_per_checker
+                        .checked_mul(u128::from(checker_count))
+                        .expect("milestone bonus transfer overflow");
+                    assert!(moved <= treasury_for_bonus, "milestone bonus exceeds treasury");
+                    if moved > 0 {
+                        self.token.internal_transfer(
+                            &self.contract_account_id,
+                            &self.reward_escrow_account_id,
+                            moved,
+                            Some("CROC milestone bonus escrow".to_string()),
+                        );
+                        FtTransfer {
+                            old_owner_id: &self.contract_account_id,
+                            new_owner_id: &self.reward_escrow_account_id,
+                            amount: U128(moved),
+                            memo: Some("milestone bonus escrow"),
+                        }
+                        .emit();
+                    }
+                    env::log_str(&format!(
+                        "EVENT_JSON:{{\"standard\":\"croc\",\"version\":\"1.0.0\",\"event\":\"milestone\",\"data\":[{{\"threshold\":{},\"moved\":\"{}\",\"per_checker\":\"{}\"}}]}}",
+                        MILESTONE_STREAKS[index], moved, bonus_per_checker
+                    ));
+                }
+            }
         } else {
             self.current_streak = 0;
         }
@@ -409,6 +487,7 @@ impl Contract {
             DaySettlement {
                 checker_count,
                 reward_per_checker,
+                bonus_per_checker,
                 succeeded,
                 minted_to_treasury,
                 burned,
