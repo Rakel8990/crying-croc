@@ -1,0 +1,14 @@
+name: CROC milestone workflow (stub)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stub:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print stub
+        run: echo "stub"
