@@ -248,7 +248,7 @@ jobs:
             body="$(jq -cn --arg account_id "$account_id" --arg method "$method" --arg args "$args_b64" '{jsonrpc:"2.0",id:"croc-milestone-view",method:"query",params:{request_type:"call_function",finality:"final",account_id:$account_id,method_name:$method,args_base64:$args}}')"
             response_file="$CROC_RUN_DIR/output/rpc-view-${method}.json"
             rpc_response="$(rpc_post_to_file "view:$method" "$body" "$response_file")"
-            if printf '%s' "$rpc_response" | jq -er '[.result.result[]] | implode | fromjson'; then
+            if printf '%s' "$rpc_response" | jq -cer '[.result.result[]] | implode | fromjson'; then
               :
             else
               exit_code=$?
@@ -259,7 +259,7 @@ jobs:
           block_timestamp_ns() {
             local response_file="$CROC_RUN_DIR/output/rpc-block.json" rpc_response exit_code
             rpc_response="$(rpc_post_to_file "block timestamp" '{"jsonrpc":"2.0","id":"croc-milestone-block","method":"block","params":{"finality":"final"}}' "$response_file")"
-            if printf '%s' "$rpc_response" | jq -er '.result.header.timestamp_nanosec | tonumber'; then
+            if printf '%s' "$rpc_response" | jq -cer '.result.header.timestamp_nanosec | tonumber'; then
               :
             else
               exit_code=$?
