@@ -1,22 +1,29 @@
-# CROC contract progress
+# Project progress
 
-- **Done:** Step 0 — synchronized `WHITEPAPER.md`, appended the requested authority and workflow rules to `AGENTS.md`, and committed as `256cd97`.
-- **Done:** Step 1 — reviewed and attempted each requested skill once. NEAR skill install did not start because Python was unavailable. Superpowers was not installed: its specified install file returned 404 and the official Codex app path requires a Plugins-panel click.
-- **Done:** Step 2 — CI log workflow committed and pushed as `e510c49b7ecf775c37f84cb8e32874e6cffbee7f`. The `ci-logs` branch wrote the matching-SHA report. GitHub's Actions API and raw file URL returned 404, so reports were retrieved by read-only Git fetch.
-- **Done:** Step 3 — panic API stubs compiled and ran in Actions at `8c60263553cb649f376487fd54002df5f4fba1d5`. The log showed 9 TODO-stub failures; 7 broad `#[should_panic]` tests were labeled `ok` because any panic satisfied them, which is not behavioral verification. Wasm build completed.
-- **Done:** State and views were added. The first CI attempt (`0caa33f`) found two invalid `.copied()` calls; they were removed.
-- **Failing:** CI for `296488f78815f98f19ee5cb7f214c8c2fcaba44f` compiled and ran all 16 tests, but 9 still failed at intentional `storage_deposit` or `settle` stubs. Seven broad panic tests were labeled `ok` due to TODO panics. Wasm build completed. No test is reported as passing.
-- **Done:** Settlement was pushed as `723246809a6fca6e7b7ebb606c85324110142d0d`; the matching CI log shows `cargo test` ran with 7 failures and `cargo build` completed. CI listed the idempotent-settle and empty-day burn assertions as `ok`; the broader red result is due to remaining registration/check-in stubs. No overall test-suite success is claimed.
-- **Done:** Check-in code was pushed as `48f82d8452ba3b2ca2c803c018b797f4df8de0e6`; the matching log shows it compiled, but 7 tests remain red at the `storage_deposit` stub before registered-account checks can run. Wasm build completed. The overall run remains red.
-- **Done:** Claim code was pushed as `6f16d2c815b0114d15ab051b6ae3b75bab803989`; it compiled, but 7 tests still stop at `storage_deposit` before reaching claim assertions. Wasm build completed; the full run remains red.
-- **Done:** NEP-141/NEP-145 storage code was pushed as `e8f13398a3a628b70733cf7e7a3b8f1a4df706c2`; CI compiled and ran 16 tests, with 15 listed as `ok`, 1 failed, and the Wasm build completed. The full run is red.
-- **Done:** Pushed `c2887bc` together with test-only follow-up commit `5563735`. The matching CI report SHA is `556373594978a854add0b5e9f0ef9f292ee6dab4`; the old shared-storage failure is gone, but the run is red because the new transfer accounting test omitted NEP-141's required 1 yoctoNEAR attached deposit.
-- **Done:** The matching Actions report for `c2734bc35bf45fa591a0bf7fcd4c6480531da9a1` reports 20 unit tests, zero failures, and a successful release Wasm build. Cargo was not run on this PC.
-- **Sandbox gas test:** Per builder decision, stopped investigating the experimental sandbox gas test. Kept `tests/settle_gas.rs` unchanged and moved it to `.github/workflows/sandbox-gas.yml`, a manual-only workflow labeled experimental. The report available during this change was still for `3b1d7aa`; there was no `769bc43` report to record at that time. If one arrives later, record its result here without acting on it.
-- **Gas note per builder decision:** `settle()` cost per day is constant because only counters are stored; real gas will be measured on testnet using the 5-minute copy.
-- **Done:** Main CI workflow separation committed as `8a7c64b`. The matching `ci-logs` report SHA `8a7c64ba9f7a65beb2e136b68b6116c125dc5f2f` reports `SUCCESS (unit tests: 0, cargo build: 0)`. No `769bc43` report was observed before this report; no action was taken on that old experimental run.
-- **Done:** The simulation workflow ran for `f3b9b77758fb9f64405e526f78ebd43814e75284`; its `ci-logs` output includes four scenario CSVs and four PNG charts plus replay CSV/summary. The matching main CI report for that SHA says `SUCCESS (unit tests: 0, cargo build: 0)` and lists 20 unit tests, zero failures, with the Wasm build completed. These generated artifacts have been copied into `docs/simulation/results/` for main.
-- **Done:** Added `REVIEW.md`, documenting the five WHITEPAPER.md §8 bug areas, public entry points and callers, supply accounting, known differences, test inventory, and limitations.
-- **Done:** Replay test, review guide, simulation artifacts, and this progress update committed as `bb6b7fe25338aeffd2de2a0aba8cad3c7e96f0c5` and pushed. The matching `ci-logs` report for this SHA says `SUCCESS (unit tests: 0, cargo build: 0)` and records `21 passed; 0 failed`; the Wasm build completed. The simulation outputs for the same SHA are present under `simulations/bb6b7fe25338aeffd2de2a0aba8cad3c7e96f0c5/` on `ci-logs`. No Cargo was run locally.
-- **Stopped:** Requested work is complete. Sandbox gas remains manual and experimental; no testnet gas run was started.
-- **In progress:** `testnet-final.yml` is a manual-only final-copy workflow. Its first CI commit `435326d` failed YAML validation at line 226 before Cargo or any testnet action ran; the hash-conversion YAML was corrected in the next commit. It deploys a clean 24-hour/target-5 copy, validates the deployment and hashes, and deletes the fresh testnet account's keys only when the exact workflow input is supplied. It has not been dispatched.
+Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit tests run in GitHub Actions.
+
+## Done
+
+- Phase 1 items 1.1–1.5: metadata name and test; four read-only contract views and five tests; current-brand references in documentation; manual-only testnet playground workflow; keeper target configuration file.
+- Latest matching main CI report: SHA `506e93b179102ff77f1b6842a4d5ea5e338760b3`; `32 passed; 0 failed`; release Wasm build completed; overall result `SUCCESS`.
+- Existing testnet results: fast smoke run `42470768543`; final deployment and key-removal proof `42612804896`; keeper runs `42774913344` and `42776383812`.
+- The 60-day simulations, charts, replay test, and reviewer documentation are present in the repository.
+- The sandbox gas workflow remains manual and experimental; no gas run is claimed.
+
+## In progress
+
+- Phase 1 item 1.7: add a manual-only stub milestone workflow and confirm whether GitHub lets the user select a non-default branch when running it.
+
+## Not done
+
+- The playground workflow has not been dispatched. No deployment was run as part of this update.
+- Phase 2 milestone-bonus work and its branch workflow have not started.
+- A day-50 milestone is not specified: the provided schedule gives rates only for days 7, 15, 25, and 100. No rate was invented.
+- Testnet settle gas measurement remains outstanding.
+- The probe testnet run was reported as successful in the handoff, but its run ID is not recorded in the available repository notes.
+
+## Verification
+
+- Current unit-test count: 32.
+- Latest verified commit: `506e93b179102ff77f1b6842a4d5ea5e338760b3`.
+- No Cargo command was run on this PC.
