@@ -12,20 +12,23 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 ## In progress
 
-- Phase 2.2: milestone flags, exact basis-point settlement, treasury-to-escrow movement, combined reward payout, and the `get_day` bonus field are implemented on `milestone`. Matching Actions verification is recorded for commit `fba5a31`.
+none
 
 ## Not done
 
 - The playground workflow has not been dispatched. No deployment was run as part of this update.
-- Phase 2.4: a manual-only milestone testnet workflow is written on the `milestone` branch. It uses five faucet-funded checkers, fast settings, verifies seven consecutive daily settlements and the day-seven bonus, claims the combined reward, and checks the next day does not pay another bonus. It publishes only to `ci-logs`; it has not been dispatched.
-- Phase 2.3: simulation and replay now model the one-time streak bonuses, track daily escrow and treasury, and generate separate treasury charts. The first replay run failed because the supplemental CSV still had the old columns; that fixture has been regenerated with the bonus, escrow, and supply fields. A milestone-only workflow runs the script, compares the supplemental fixture, and saves CSV/PNG output as an Actions artifact. Matching Actions verification is pending.
+- Phase 2.2: milestone flags, exact basis-point settlement, treasury-to-escrow movement, combined reward payout, and bonus data in `get_day` are implemented.
+- Phase 2.3: simulation and replay model the one-time bonuses, track daily escrow and treasury, and generate separate treasury charts. A milestone-only workflow runs the script, compares the supplemental replay fixture, and saves CSV/PNG output as an Actions artifact.
+- Phase 2.4: a manual-only milestone testnet workflow uses five faucet-funded checkers and fast settings. It checks seven consecutive settlements and day-seven bonus accounting, claims the combined reward, verifies day eight pays no second bonus, and publishes only to `ci-logs`. It has not been dispatched.
 - A day-50 milestone is not specified: the provided schedule gives rates only for days 7, 15, 25, and 100. No rate was invented.
 - Testnet settle gas measurement remains outstanding.
 - The probe testnet run was reported as successful in the handoff, but its run ID is not recorded in the available repository notes.
 
 ## Verification
 
-- Unit-test definitions: 32 existing plus 8 milestone tests (40 total); the latest milestone source SHA awaits Actions.
+- Unit-test definitions: 32 existing plus 8 milestone tests (40 total).
 - Phase 1 final verified commit: `ab3c12db1e5c97934e09828c57bff333a04b97ca`.
-- Phase 2 CI report for `f8d994a9795bcb09474c2f7b131c156e0566f812`: 39 passed, 1 failed; replay fixture columns did not match the updated model. Correction is pending Actions verification.
+- Latest Phase 2 main CI: SHA `7fddc7bbf7b1bf7b69dcd174225574ba6017e584`; `40 passed; 0 failed`; Wasm build succeeded; actionlint step completed before tests.
+- Phase 2 simulation workflow: run `42984363756` for SHA `7fddc7bbf7b1bf7b69dcd174225574ba6017e584` completed successfully.
+- Earlier failed attempts: SHA `851ffb8` failed the added replay-file comparison because of a line-ending mismatch; SHA `f8d994a` and `7315b72` each had 39 passed and the replay test failed against a fixture that still had the old columns. The fixture and comparison setup were corrected; the latest matching reports above succeeded.
 - No Cargo command was run on this PC.
