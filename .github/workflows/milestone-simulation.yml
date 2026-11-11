@@ -1,0 +1,33 @@
+name: Milestone branch simulation
+
+on:
+  push:
+    branches:
+      - milestone
+
+permissions:
+  contents: read
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the milestone commit
+        uses: actions/checkout@v4
+
+      - name: Run simulations and verify the replay reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_dir="$RUNNER_TEMP/croc-milestone-simulation"
+          python3 scripts/simulate_60_days.py --output-dir "$output_dir"
+          sed 's/\r$//' docs/simulation/replay_reference_milestones.csv > "$RUNNER_TEMP/replay-reference-expected.csv"
+          sed 's/\r$//' "$output_dir/replay_reference.csv" > "$RUNNER_TEMP/replay-reference-actual.csv"
+          diff -u "$RUNNER_TEMP/replay-reference-expected.csv" "$RUNNER_TEMP/replay-reference-actual.csv"
+
+      - name: Save CSV and PNG outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: milestone-simulation-${{ github.sha }}
+          path: ${{ runner.temp }}/croc-milestone-simulation/
+          if-no-files-found: error

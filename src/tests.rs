@@ -549,7 +549,7 @@ fn sixty_day_replay_matches_independent_reference_and_simulation_csv() {
             (fields.next().unwrap().parse().unwrap(), fields.next().unwrap().parse().unwrap())
         })
         .collect();
-    let simulation: Vec<Vec<String>> = include_str!("../docs/simulation/results/replay_reference.csv")
+    let simulation: Vec<Vec<String>> = include_str!("../docs/simulation/replay_reference_milestones.csv")
         .lines()
         .skip(1)
         .map(|line| line.split(',').map(str::to_owned).collect())

@@ -33,16 +33,6 @@ jobs:
           output_file="$RUNNER_TEMP/croc-cargo-output.log"
           : > "$output_file"
 
-          simulation_dir="$RUNNER_TEMP/croc-simulation"
-          if ! python3 scripts/simulate_60_days.py --output-dir "$simulation_dir" >> "$output_file" 2>&1; then
-            echo "60-day simulation script failed."
-            exit 1
-          fi
-          if ! diff -u docs/simulation/results/replay_reference.csv "$simulation_dir/replay_reference.csv" >> "$output_file" 2>&1; then
-            echo "Simulation replay CSV differs from the checked-in reference."
-            exit 1
-          fi
-
           cargo test --lib 2>&1 | tee -a "$output_file"
           unit_status=${PIPESTATUS[0]}
 
