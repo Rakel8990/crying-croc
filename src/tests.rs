@@ -1,6 +1,7 @@
 use super::Contract;
 use near_contract_standards::{
     fungible_token::core::FungibleTokenCore,
+    fungible_token::metadata::FungibleTokenMetadataProvider,
     storage_management::StorageManagement,
 };
 use near_sdk::{
@@ -46,6 +47,18 @@ fn set_transfer_context(who: &AccountId, day: u64) {
 fn new_contract(target: u32) -> Contract {
     set_context(&account("initializer.testnet"), 0);
     Contract::new(DAY_NS, target)
+}
+
+#[test]
+fn ft_metadata_matches_project_token_metadata() {
+    let contract = new_contract(5);
+    let metadata = contract.ft_metadata();
+
+    assert_eq!(metadata.spec, "ft-1.0.0");
+    assert_eq!(metadata.name, "Crycodile");
+    assert_eq!(metadata.symbol, "CROC");
+    assert_eq!(metadata.decimals, 18);
+    assert_eq!(metadata.icon, None);
 }
 
 fn register(contract: &mut Contract, who: &AccountId) {

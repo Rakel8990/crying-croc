@@ -500,7 +500,7 @@ impl FungibleTokenMetadataProvider for Contract {
     fn ft_metadata(&self) -> FungibleTokenMetadata {
         FungibleTokenMetadata {
             spec: FT_METADATA_SPEC.to_string(),
-            name: "Crying Croc".to_string(),
+            name: "Crycodile".to_string(),
             symbol: "CROC".to_string(),
             icon: None,
             reference: None,
