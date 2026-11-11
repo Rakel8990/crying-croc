@@ -12,7 +12,7 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 ## In progress
 
-- Milestone workflow reliability: bounded retries and boundary-based sleeps were committed as `0274a65` and pushed to `milestone`; Actions verification is pending.
+- Milestone workflow reliability: bounded retries and boundary-based sleeps were committed as `0274a65` and pushed to `milestone`; a 10-second finalized-block buffer was added in the current follow-up.
 - Milestone FT event verification: `internal_transfer` emits a NEP-141 transfer; the redundant manual event and import were removed. Its exactly-one-event test is included in `6c1b6cd` and covered by the matching successful 41-test CI report.
 - Adaptive-target evidence simulation and report are written in `scripts/simulate_adaptive_target.py` and `docs/simulation/adaptive_target.md`, with an SVG chart. The local PC has no Python runtime, and the existing Actions workflow does not run this script, so Python execution/output regeneration is unverified.
 

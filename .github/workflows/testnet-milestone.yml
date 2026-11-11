@@ -380,7 +380,7 @@ jobs:
               day7_supply_before="$supply_before"
             fi
 
-            boundary_ts=$(((checkin_day + 1) * CROC_DAY_LENGTH_NS))
+            boundary_ts=$(((checkin_day + 1) * CROC_DAY_LENGTH_NS + 10000000000))
             current_ts="$(block_timestamp_ns)"
             wait_ns=$((boundary_ts - current_ts))
             sleep_seconds=$(((wait_ns + 999999999) / 1000000000))
