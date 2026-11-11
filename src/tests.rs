@@ -808,7 +808,7 @@ fn rounded_zero_milestone_bonus_is_marked_paid_and_never_exceeds_treasury() {
     contract
         .token
         .accounts
-        .insert(contract.contract_account_id.clone(), 1);
+        .insert(&contract.contract_account_id, &1_u128);
     contract.token.total_supply = 1;
     register(&mut contract, &alice);
 
