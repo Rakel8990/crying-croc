@@ -17,9 +17,8 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 ## Not done
 
 - The playground workflow has not been dispatched. No deployment was run as part of this update.
-- The milestone workflow is a stub only; the real milestone workflow is not written yet.
+- Phase 2.4: a manual-only milestone testnet workflow is written on the `milestone` branch. It uses five faucet-funded checkers, fast settings, verifies seven consecutive daily settlements and the day-seven bonus, claims the combined reward, and checks the next day does not pay another bonus. It publishes only to `ci-logs`; it has not been dispatched.
 - Phase 2.3: simulation and replay now model the one-time streak bonuses, track daily escrow and treasury, and generate separate treasury charts. A milestone-only workflow runs the script, compares a supplemental replay fixture outside the protected simulation-results directory, and saves the CSV/PNG output as an Actions artifact. Matching Actions verification is pending.
-- Phase 2.4: the milestone branch workflow is still a stub and needs to be replaced.
 - A day-50 milestone is not specified: the provided schedule gives rates only for days 7, 15, 25, and 100. No rate was invented.
 - Testnet settle gas measurement remains outstanding.
 - The probe testnet run was reported as successful in the handoff, but its run ID is not recorded in the available repository notes.
