@@ -12,7 +12,8 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 ## In progress
 
-none
+- Milestone workflow reliability: the failed run `43024199638` recorded a block-timestamp RPC failure at the configured NEAR Testnet endpoint, but the sanitized log did not retain the HTTP status. The workflow is being updated with bounded RPC retries and boundary-based sleeps.
+- Adaptive-target evidence simulation and report are being prepared; this is a comparison only and is not contract logic.
 
 ## Not done
 
@@ -22,6 +23,7 @@ none
 - Phase 2.4: a manual-only milestone testnet workflow uses five faucet-funded checkers and fast settings. It checks seven consecutive settlements and day-seven bonus accounting, claims the combined reward, verifies day eight pays no second bonus, and publishes only to `ci-logs`. It has not been dispatched.
 - A day-50 milestone is not specified: the provided schedule gives rates only for days 7, 15, 25, and 100. No rate was invented.
 - Testnet settle gas measurement remains outstanding.
+- The first milestone deployment attempt (`43024199638`) deployed successfully, then failed reading the block timestamp. Its sanitized logs omit the HTTP status, so no status code is claimed.
 - The probe testnet run was reported as successful in the handoff, but its run ID is not recorded in the available repository notes.
 
 ## Verification

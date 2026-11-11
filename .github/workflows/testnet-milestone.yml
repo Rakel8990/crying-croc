@@ -20,6 +20,9 @@ jobs:
       CROC_DAY_LENGTH_NS: "300000000000"
       CROC_TARGET: "5"
       NEAR_RPC: https://rpc.testnet.near.org
+      # FastNear is listed as a public Testnet provider by NEAR:
+      # https://docs.near.org/api/rpc/providers
+      NEAR_RPC_FALLBACK: https://test.rpc.fastnear.com
       NEAR_NETWORK: testnet
       CROC_SOURCE_SHA: ${{ github.sha }}
       CROC_RUN_ID: ${{ github.run_id }}
@@ -196,13 +199,37 @@ jobs:
           }
 
           rpc_post_to_file() {
-            local step_name="$1" request_body="$2" response_file="$3" exit_code
-            if curl --proto '=https' --tlsv1.2 -fsS -H 'Content-Type: application/json' --data "$request_body" "$NEAR_RPC" >"$response_file" 2>/dev/null; then
-              :
-            else
-              exit_code=$?
-              fail_step "$step_name RPC request" "$exit_code"
-            fi
+            local step_name="$1" request_body="$2" response_file="$3"
+            local attempt endpoint http_status curl_status retryable success=0 failure_code=1
+            for attempt in {1..6}; do
+              if (( attempt % 2 == 1 )); then endpoint="$NEAR_RPC"; else endpoint="$NEAR_RPC_FALLBACK"; fi
+              http_status="000"
+              if http_status="$(curl --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 30 --silent --show-error --output "$response_file" --write-out '%{http_code}' -H 'Content-Type: application/json' --data "$request_body" "$endpoint" 2>/dev/null)"; then
+                curl_status=0
+              else
+                curl_status=$?
+              fi
+              [[ "$http_status" =~ ^[0-9]{3}$ ]] || http_status="000"
+              printf 'RPC attempt=%d status=%s\n' "$attempt" "$http_status"
+              if (( curl_status == 0 )) && [[ "$http_status" == 2[0-9][0-9] ]]; then
+                success=1
+                break
+              fi
+              retryable=0
+              case "$http_status" in
+                408|429|5[0-9][0-9]) retryable=1; failure_code=$((10#$http_status));;
+              esac
+              case "$curl_status" in
+                6|7|18|28|35|52|55|56) retryable=1; failure_code="$curl_status";;
+              esac
+              if (( retryable == 0 )); then
+                failure_code="$curl_status"
+                (( curl_status == 0 )) && failure_code=$((10#$http_status))
+                fail_step "$step_name RPC request" "$failure_code"
+              fi
+              if (( attempt < 6 )); then sleep "$((1 << (attempt - 1)))"; fi
+            done
+            (( success == 1 )) || fail_step "$step_name RPC request" "$failure_code"
             [[ -s "$response_file" ]] || fail_step "$step_name RPC response" 5
             jq -e . "$response_file" >/dev/null 2>&1 || fail_step "$step_name RPC JSON validation" 5
           }
@@ -302,11 +329,9 @@ jobs:
           escrow_id="escrow.$contract_id"
           start_ts="$(block_timestamp_ns)"
           first_boundary=$(((start_ts / CROC_DAY_LENGTH_NS + 1) * CROC_DAY_LENGTH_NS + 10000000000))
-          while :; do
-            current_ts="$(block_timestamp_ns)"
-            (( current_ts >= first_boundary )) && break
-            sleep 5
-          done
+          wait_ns=$((first_boundary - start_ts))
+          sleep_seconds=$(((wait_ns + 999999999) / 1000000000))
+          (( sleep_seconds > 0 )) && sleep "$sleep_seconds"
 
           # Registration may span whole days; clear all elapsed days in seven-day batches before starting the streak.
           settle_backlog() {
@@ -336,12 +361,12 @@ jobs:
             next_day="$(view_method "$contract_id" next_day_to_settle '{}')"
             [[ "$checkin_day" == "$next_day" ]] || { echo "Day alignment failed before streak day $streak_day: current day $checkin_day, next settlement $next_day."; exit 1; }
             for i in "${!smoke_ids[@]}"; do
-              current_ts="$(block_timestamp_ns)"
-              [[ $((current_ts / CROC_DAY_LENGTH_NS)) -eq "$checkin_day" ]] || { echo "Five check-ins crossed the day boundary on streak day $streak_day; stopping without retry."; exit 1; }
               user_id="${smoke_ids[$i]}"
               tx_hash="$(sign_and_send "check-in-day-${streak_day}-${i}" "$user_id" "${smoke_keys[$i]}" contract call-function as-transaction "$contract_id" check_in json-args '{}' prepaid-gas '30 TGas' attached-deposit '0 NEAR')"
               record_receipt_gas "check_in_day_${streak_day}_${i}" "$tx_hash" "$user_id"
             done
+            current_ts="$(block_timestamp_ns)"
+            [[ $((current_ts / CROC_DAY_LENGTH_NS)) -eq "$checkin_day" ]] || { echo "Five check-ins crossed the day boundary on streak day $streak_day; stopping without retry."; exit 1; }
             checkins="$(view_method "$contract_id" today_checkins '{}')"
             [[ "$checkins" == "5" ]] || { echo "Streak day $streak_day ($checkin_day): expected five check-ins, read $checkins."; exit 1; }
             treasury_before="$(view_method "$contract_id" treasury '{}')"
@@ -355,14 +380,13 @@ jobs:
               day7_supply_before="$supply_before"
             fi
 
-            deadline=$((SECONDS + 600))
-            while :; do
-              current_ts="$(block_timestamp_ns)"
-              current_day=$((current_ts / CROC_DAY_LENGTH_NS))
-              (( current_day > checkin_day )) && break
-              (( SECONDS < deadline )) || { echo "Timed out waiting for the next five-minute day after streak day $streak_day."; exit 1; }
-              sleep 5
-            done
+            boundary_ts=$(((checkin_day + 1) * CROC_DAY_LENGTH_NS))
+            current_ts="$(block_timestamp_ns)"
+            wait_ns=$((boundary_ts - current_ts))
+            sleep_seconds=$(((wait_ns + 999999999) / 1000000000))
+            (( sleep_seconds > 0 )) && sleep "$sleep_seconds"
+            current_ts="$(block_timestamp_ns)"
+            current_day=$((current_ts / CROC_DAY_LENGTH_NS))
             [[ "$current_day" -eq $((checkin_day + 1)) ]] || { echo "More than one day elapsed after streak day $streak_day; refusing to count a skipped day as a good day."; exit 1; }
             settle_hash="$(sign_and_send "settle-day-${streak_day}" "$contract_id" "$contract_key" contract call-function as-transaction "$contract_id" settle json-args '{}' prepaid-gas '100 TGas' attached-deposit '0 NEAR')"
             record_receipt_gas "settle_day_${streak_day}" "$settle_hash" "$contract_id"
