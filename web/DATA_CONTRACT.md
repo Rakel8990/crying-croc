@@ -11,7 +11,8 @@ This document describes the deployed contract's public **view** methods for the 
 | `current_streak` | `{}` | JSON decimal string (`U128`) |
 | `longest_streak` | `{}` | JSON decimal string (`U128`) |
 | `today_checkins` | `{}` | JSON decimal string (`U128`) |
-| `get_day` | `{"day":0}` | `null` if unsettled; otherwise `{"day":0,"checker_count":5,"success":true,"reward_per_checker":"<yoctoCROC>","bonus_per_checker":"<yoctoCROC>"}` |
+| `get_day` | `{"day":0}` | `null` if unsettled; otherwise `{"day":0,"checker_count":5,"success":true,"reward_per_checker":"<yoctoCROC>"}` |
+| `get_day_with_bonus` | `{"day":0}` | `null` if unsettled; otherwise `{"day":0,"checker_count":5,"success":true,"reward_per_checker":"<yoctoCROC>","bonus_per_checker":"<yoctoCROC>"}` |
 | `get_checkins` | `{"day":0}` | JSON integer (`u32`) |
 | `next_day_to_settle` | `{}` | JSON integer (`u64`) |
 | `account_progress` | `{"account_id":"alice.testnet"}` | `null` if unknown; otherwise `{"last_checkin_day":0,"resolved":false}` |

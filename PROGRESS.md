@@ -12,7 +12,7 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 ## In progress
 
-- Phase 2.2: milestone flags, exact basis-point settlement, treasury-to-escrow movement, combined reward payout, and the updated day view have been added on `milestone`; matching Actions verification is pending.
+- Phase 2.2: milestone flags, exact basis-point settlement, treasury-to-escrow movement, and combined reward payout are implemented on `milestone`. The original `get_day` view remains compatible; the additional `get_day_with_bonus` view exposes the milestone amount. Matching Actions verification is pending.
 
 ## Not done
 

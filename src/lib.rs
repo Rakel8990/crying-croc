@@ -63,15 +63,6 @@ pub struct DayViewWithBonus {
     pub bonus_per_checker: U128,
 }
 
-impl PartialEq<DayView> for DayViewWithBonus {
-    fn eq(&self, other: &DayView) -> bool {
-        self.day == other.day
-            && self.checker_count == other.checker_count
-            && self.success == other.success
-            && self.reward_per_checker == other.reward_per_checker
-    }
-}
-
 #[near(serializers = [json])]
 #[derive(Debug, PartialEq, Eq)]
 pub struct AccountProgressView {
@@ -252,7 +243,16 @@ impl Contract {
         )
     }
 
-    pub fn get_day(&self, day: u64) -> Option<DayViewWithBonus> {
+    pub fn get_day(&self, day: u64) -> Option<DayView> {
+        self.day_settlements.get(&day).map(|settlement| DayView {
+            day,
+            checker_count: settlement.checker_count,
+            success: settlement.checker_count >= self.target,
+            reward_per_checker: U128(settlement.reward_per_checker),
+        })
+    }
+
+    pub fn get_day_with_bonus(&self, day: u64) -> Option<DayViewWithBonus> {
         self.day_settlements.get(&day).map(|settlement| DayViewWithBonus {
             day,
             checker_count: settlement.checker_count,

@@ -650,7 +650,7 @@ fn milestone_bonus_is_paid_only_at_streaks_7_15_25_and_100() {
         check_in_as(&mut contract, &alice, day);
         let treasury_before = contract.treasury().0;
         settle_as(&mut contract, day + 1);
-        let record = contract.get_day(day).expect("settled day must be visible");
+        let record = contract.get_day_with_bonus(day).expect("settled day must be visible");
         let threshold = thresholds.iter().position(|(streak, _)| *streak == day + 1);
         let expected_bonus = if let Some(index) = threshold {
             paid[index] = true;
@@ -686,7 +686,7 @@ fn climbing_to_streak_seven_again_does_not_pay_the_milestone_twice() {
         settle_as(&mut contract, day + 1);
     }
 
-    assert_eq!(contract.get_day(14).unwrap().bonus_per_checker.0, 0);
+    assert_eq!(contract.get_day_with_bonus(14).unwrap().bonus_per_checker.0, 0);
     assert_eq!(contract.milestones_paid(), [true, false, false, false]);
 }
 
@@ -709,7 +709,7 @@ fn one_checker_milestone_moves_exact_bonus_without_changing_supply() {
 
     let bonus_total = treasury_before * 100 / 10_000;
     let moved = bonus_total;
-    assert_eq!(contract.get_day(6).unwrap().bonus_per_checker.0, moved);
+    assert_eq!(contract.get_day_with_bonus(6).unwrap().bonus_per_checker.0, moved);
     assert_eq!(contract.treasury().0, treasury_before - moved);
     assert_eq!(contract.balance_of(escrow_account()).0, escrow_before + moved);
     assert_eq!(contract.total_supply().0, supply_before);
@@ -741,7 +741,7 @@ fn many_checker_milestone_floors_per_checker_and_keeps_dust_in_treasury() {
             let dust = bonus_total - moved;
 
             assert!(dust > 0, "seven checkers must leave integer division dust");
-            assert_eq!(contract.get_day(day).unwrap().bonus_per_checker.0, per_checker);
+            assert_eq!(contract.get_day_with_bonus(day).unwrap().bonus_per_checker.0, per_checker);
             assert_eq!(contract.treasury().0, treasury_before - moved);
             assert_eq!(contract.treasury().0 - (treasury_before - bonus_total), dust);
             assert_eq!(contract.balance_of(escrow_account()).0, escrow_before + moved);
@@ -762,7 +762,7 @@ fn claim_pays_daily_reward_and_milestone_bonus_exactly_once() {
         settle_as(&mut contract, day + 1);
     }
 
-    let day = contract.get_day(6).unwrap();
+    let day = contract.get_day_with_bonus(6).unwrap();
     let expected = day.reward_per_checker.0 + day.bonus_per_checker.0;
     let claimer_before = contract.balance_of(alice.clone()).0;
     let escrow_before = contract.balance_of(escrow_account()).0;
@@ -789,7 +789,7 @@ fn next_check_in_lazily_pays_daily_reward_and_milestone_bonus() {
         settle_as(&mut contract, day + 1);
     }
 
-    let day = contract.get_day(6).unwrap();
+    let day = contract.get_day_with_bonus(6).unwrap();
     let expected = day.reward_per_checker.0 + day.bonus_per_checker.0;
     let claimer_before = contract.balance_of(alice.clone()).0;
     let escrow_before = contract.balance_of(escrow_account()).0;
@@ -817,7 +817,7 @@ fn rounded_zero_milestone_bonus_is_marked_paid_and_never_exceeds_treasury() {
         settle_as(&mut contract, day + 1);
     }
 
-    assert_eq!(contract.get_day(6).unwrap().bonus_per_checker.0, 0);
+    assert_eq!(contract.get_day_with_bonus(6).unwrap().bonus_per_checker.0, 0);
     assert_eq!(contract.treasury().0, 1);
     assert_eq!(contract.milestones_paid(), [true, false, false, false]);
 }
@@ -836,7 +836,7 @@ fn missed_day_never_pays_a_milestone_bonus() {
     settle_as(&mut contract, 7);
 
     assert_eq!(contract.get_day(6).unwrap().success, false);
-    assert_eq!(contract.get_day(6).unwrap().bonus_per_checker.0, 0);
+    assert_eq!(contract.get_day_with_bonus(6).unwrap().bonus_per_checker.0, 0);
     assert_eq!(contract.milestones_paid(), [false; 4]);
     assert_eq!(contract.current_streak().0, 0);
 }
