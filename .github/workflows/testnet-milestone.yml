@@ -288,13 +288,20 @@ jobs:
           }
 
           view_method() {
-            local account_id="$1" method="$2" args="$3" args_b64 body response_file rpc_response exit_code
+            local account_id="$1" method="$2" args="$3" args_b64 body response_file rpc_response exit_code result
             args_b64="$(printf '%s' "$args" | base64 -w 0)"
             body="$(jq -cn --arg account_id "$account_id" --arg method "$method" --arg args "$args_b64" '{jsonrpc:"2.0",id:"croc-milestone-view",method:"query",params:{request_type:"call_function",finality:"final",account_id:$account_id,method_name:$method,args_base64:$args}}')"
             response_file="$CROC_RUN_DIR/output/rpc-view-${method}.json"
             rpc_response="$(rpc_post_to_file "view:$method" "$body" "$response_file")"
-            if printf '%s' "$rpc_response" | normalize_rpc_view_value; then
-              :
+            if result="$(printf '%s' "$rpc_response" | normalize_rpc_view_value)"; then
+              # Strip outer quotes from bare decimal strings so U128 values
+              # like "300000000000000000000000000" compare equal to numbers
+              # produced by python3 arithmetic.  Non-numeric strings, arrays
+              # and objects pass through unchanged.
+              if [[ "$result" =~ ^\"[0-9]+\"$ ]]; then
+                result="${result//\"/}"
+              fi
+              printf '%s' "$result"
             else
               exit_code=$?
               fail_step "view:$method JSON extraction" "$exit_code"
