@@ -6,7 +6,8 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 - Branch `milestone` is at `deb235b408b52db7a643cd081b99319359014afa`; its matching `ci-latest.txt` reports 41 unit tests passed and the Wasm build succeeded. The matching main CI and actionlint run is `43079336993`; the milestone simulation run is `43079336631`; the milestone testnet run is `43080463005` (Actions API outcomes verified).
 - Branch `main` is at `ab3c12db1e5c97934e09828c57bff333a04b97ca`; its test workflow `42973475684` and actionlint step succeeded, but `ci-logs/ci-latest.txt` does not match this SHA, so its test count is unverified from ci-logs. Its simulation workflow run `43079599334` was skipped.
-- Simulation publication under `<sha>/simulation/` and canonical RPC view-comparison self-tests are in progress on the milestone branch. Adaptive simulation values will be compared against `docs/simulation/adaptive_target.md` only after the workflow publishes its files to ci-logs.
+- Commit `61a869a76be466cea2058782197508c4a1138076` published simulation summaries, CSVs and charts under its `<sha>/simulation/` directory; milestone simulation run `43169596972` succeeded. The adaptive results in `docs/simulation/adaptive_target.md` now match that published output, including the corrected rule B/C bot-spike target description.
+- The canonical milestone RPC comparison self-test and workflow updates are in that same commit. No testnet workflow was dispatched. The matching main CI/actionlint run for `61a869a76be466cea2058782197508c4a1138076` was still in progress when this note was written.
 
 ## Done
 

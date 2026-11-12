@@ -20,37 +20,39 @@ Scenario inputs are explicit: steady crowds of 200, 500 and 1,000 wallets each c
 
 ## Results
 
+The following values match the workflow output published at SHA `61a869a76be466cea2058782197508c4a1138076` (`adaptive_target_summary.md` and its CSV files on `ci-logs`).
+
 | Scenario | Wallets | Rule | Missed days | Treasury burned (CROC) | Days to recover |
 |---|---:|:---:|---:|---:|---:|
-| Steady | 200 | A | 0 | 0 | 0 |
-| Steady | 200 | B | 0 | 0 | 0 |
-| Steady | 200 | C | 0 | 0 | 0 |
-| Steady | 500 | A | 0 | 0 | 0 |
-| Steady | 500 | B | 0 | 0 | 0 |
-| Steady | 500 | C | 0 | 0 | 0 |
-| Steady | 1,000 | A | 0 | 0 | 0 |
-| Steady | 1,000 | B | 0 | 0 | 0 |
-| Steady | 1,000 | C | 0 | 0 | 0 |
-| 100-bot spike, days 1–7 | 500 humans | A | 4 | 55,534,866.073297207298913483 | 4 |
-| 100-bot spike, days 1–7 | 500 humans | B | 0 | 0 | 0 |
-| 100-bot spike, days 1–7 | 500 humans | C | 0 | 0 | 0 |
-| Sustained 100 bots | 500 humans | A | 0 | 0 | 0 |
-| Sustained 100 bots | 500 humans | B | 0 | 0 | 0 |
-| Sustained 100 bots | 500 humans | C | 0 | 0 | 0 |
-| Fading human participation | 500 humans | A | 0 | 0 | 0 |
-| Fading human participation | 500 humans | B | 0 | 0 | 0 |
-| Fading human participation | 500 humans | C | 0 | 0 | 0 |
+| steady_200 | 200 | A | 0 | 0.000000000000000000 | 0 |
+| steady_200 | 200 | B | 0 | 0.000000000000000000 | 0 |
+| steady_200 | 200 | C | 0 | 0.000000000000000000 | 0 |
+| steady_500 | 500 | A | 0 | 0.000000000000000000 | 0 |
+| steady_500 | 500 | B | 0 | 0.000000000000000000 | 0 |
+| steady_500 | 500 | C | 0 | 0.000000000000000000 | 0 |
+| steady_1000 | 1000 | A | 0 | 0.000000000000000000 | 0 |
+| steady_1000 | 1000 | B | 0 | 0.000000000000000000 | 0 |
+| steady_1000 | 1000 | C | 0 | 0.000000000000000000 | 0 |
+| bot_spike_500 | 500 | A | 4 | 55534866.073297207298913483 | 4 |
+| bot_spike_500 | 500 | B | 0 | 0.000000000000000000 | 0 |
+| bot_spike_500 | 500 | C | 0 | 0.000000000000000000 | 0 |
+| sustained_bots_500 | 500 | A | 0 | 0.000000000000000000 | 0 |
+| sustained_bots_500 | 500 | B | 0 | 0.000000000000000000 | 0 |
+| sustained_bots_500 | 500 | C | 0 | 0.000000000000000000 | 0 |
+| humans_fading_500 | 500 | A | 0 | 0.000000000000000000 | 0 |
+| humans_fading_500 | 500 | B | 0 | 0.000000000000000000 | 0 |
+| humans_fading_500 | 500 | C | 0 | 0.000000000000000000 | 0 |
 
-For the bot-spike scenario, rule A reaches target 320 on day 8 while the human crowd returns to 300 check-ins. It misses on days 8–11 and succeeds again on day 12. Rules B and C use the minimum of the prior week, so the target is 150 after the spike and no day is missed. This is a modeled tradeoff: A reacts more to a short-lived spike, while B/C track the lowest recent participation.
+For the bot-spike scenario, the daily CSV shows rule A at target 320 on day 8 while humans return to 300 check-ins; it misses days 8–11 and succeeds on day 12 after the target falls to 240. Rule B has target 200 on day 8 and 150 by day 10, with no misses. Rule C raises its target gradually after the spike and also has no misses. This is a modeled tradeoff: A reacts more sharply to a short-lived spike, while B/C use the recent minimum and C limits increases.
 
 ## Weekly challenge pool example
 
 For one illustrative week, assume 100 human wallets and all listed bot wallets qualify by checking in all seven days. Start with the 300,000,000 CROC treasury. The weekly pool is `floor(treasury / 100)` = 3,000,000 CROC, split evenly across all eligible wallets with integer division; undistributed dust stays in the pool.
 
-| Eligible bot wallets | Total eligible wallets | Bot share of eligible wallets | Amount captured by bots | Share of weekly pool captured |
+| Eligible bot wallets | Total eligible wallets | Bot share of eligible wallets | Amount captured by bots (CROC) | Share of weekly pool captured |
 |---:|---:|---:|---:|---:|
-| 5 | 105 | 4.7619% | 142,857.142857142857142855 CROC | 4.7619% |
-| 50 | 150 | 33.3333% | 1,000,000 CROC | 33.3333% |
+| 5 | 105 | 4.7619% | 142857.142857142857142855 | 4.7619% |
+| 50 | 150 | 33.3333% | 1000000.000000000000000000 | 33.3333% |
 
 This isolates one week and does not feed the hypothetical challenge payout back into the 60-day daily-burn scenarios. It illustrates that wallets that can check in every day could capture a substantial fraction of a participation-based weekly pool. The weekly challenge is evidence only and is not implemented.
 
