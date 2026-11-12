@@ -1,0 +1,80 @@
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+Smoke assertions completed; sanitized result files were created.
+CROC milestone testnet verification: d3aa408f9474a90762943bcb0ce9bf5cb602c6bc / 43231347872
+Contract: croc-milestone-43231347872-1.testnet
+Copy: milestone, 5-minute days, target 5
+Deploy plus new(): one atomic transaction, hash 5VXVXhiFkyDe6yVttd3LGZWdfDnVLsjYLG13dQww6KWP, exactly two actions
+Smoke: five registered check-ins, settled streak 8, claimer received 1186161.7903411195421875 CROC (1186161790341119542187500 yoctoCROC)
+Status: today's check-ins 0; streak 8; longest streak 8; pool 672485130.5028058127734375 CROC; treasury 284877351.40248605773046875 CROC
+Contract native balance: 10.0009477828463227 NEAR (10000947782846322700000000 yoctoNEAR)
+Gas: gas.csv records gas and native fees from finalized transaction and receipt outcomes, in NEAR and yoctoNEAR.
+{
+  "source_sha": "d3aa408f9474a90762943bcb0ce9bf5cb602c6bc",
+  "run_id": "43231347872",
+  "copy": "milestone",
+  "contract_account_id": "croc-milestone-43231347872-1.testnet",
+  "day_length_ns": 300000000000,
+  "target": 5,
+  "deploy_init_transaction_hash": "5VXVXhiFkyDe6yVttd3LGZWdfDnVLsjYLG13dQww6KWP",
+  "deploy_init_action_count": 2,
+  "deploy_init_is_single_transaction": true,
+  "claim_transaction_hash": "7nmVrvCPzJGnKFd3vSKK6PCwBpjueqrF7kZbPHPEUvSX",
+  "claimer": "croc-checker1-43231347872-1.testnet",
+  "claim_yoctoCROC": "1186161790341119542187500",
+  "claim_croc": "1186161.7903411195421875",
+  "streak_days_verified": 8,
+  "day7_bonus_per_checker_yoctoCROC": "574827109446672198437500",
+  "day7_bonus_total_yoctoCROC": "2874135547233360992187500",
+  "day7_bonus_moved_yoctoCROC": "2874135547233360992187500",
+  "day7_treasury_before_yoctoCROC": "287073924345061406250000000",
+  "day7_pool_before_yoctoCROC": "679260756549385937500000000",
+  "milestones_paid_after_day8": "[true,false,false,false]",
+  "storage_deposit_min_yoctoNEAR": "1250000000000000000000",
+  "storage_deposit_min_NEAR": "0.00125",
+  "claimer_balance_before_yoctoCROC": "3733063821110531250000000",
+  "claimer_balance_after_yoctoCROC": "4919225611451650792187500",
+  "escrow_balance_before_yoctoCROC": "0",
+  "escrow_balance_after_yoctoCROC": "4744647161364478168750000",
+  "today_checkins": "0",
+  "streak": "8",
+  "longest_streak": "8",
+  "pool_yoctoCROC": "672485130502805812773437500",
+  "pool_croc": "672485130.5028058127734375",
+  "treasury_yoctoCROC": "284877351402486057730468750",
+  "treasury_croc": "284877351.40248605773046875",
+  "total_supply_yoctoCROC": "312514869497194187226562500",
+  "total_supply_croc": "312514869.4971941872265625",
+  "contract_native_balance_yoctoNEAR": "10000947782846322700000000",
+  "contract_native_balance_NEAR": "10.0009477828463227"
+}
+[ci-logs f11d9aa] Publish milestone testnet results for d3aa408f9474a90762943bcb0ce9bf5cb602c6bc
+ 3 files changed, 99 insertions(+)
+ create mode 100644 testnet/milestone/d3aa408f9474a90762943bcb0ce9bf5cb602c6bc/43231347872/gas.csv
+ create mode 100644 testnet/milestone/d3aa408f9474a90762943bcb0ce9bf5cb602c6bc/43231347872/result.json
+ create mode 100644 testnet/milestone/d3aa408f9474a90762943bcb0ce9bf5cb602c6bc/43231347872/summary.txt
+To https://github.com/Rakel8990/crying-croc
+   37fae21..f11d9aa  HEAD -> ci-logs

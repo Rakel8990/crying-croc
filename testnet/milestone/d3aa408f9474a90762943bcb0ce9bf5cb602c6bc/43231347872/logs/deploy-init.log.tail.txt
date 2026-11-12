@@ -1,0 +1,43 @@
+├  Unsigned transaction:
+│    signer_id:    croc-milestone-43231347872-1.testnet
+│    receiver_id:  croc-milestone-43231347872-1.testnet
+│    actions:
+│       -- deploy code <FeLRTmEQPCBisFSPeBZCj1JEyEj2Rz3U4kUR7QvoUqoT> to a account <croc-milestone-43231347872-1.testnet>
+│       -- function call:      
+│                       method name:  new
+│                       args:         {
+│                                       "day_length_ns": 300000000000,
+│                                       "target": 5
+│                                     }
+│                       gas:          100.0 Tgas
+│                       deposit:      0 NEAR
+│     [0m
+├  Your transaction was signed successfully.
+│    Public key: ed25519:5bVXmxJpndTVk7qHqQeGH5vphDGh6EzYxpPKN1ATNfLw
+│    Signature:  ed25519:4TRxesJkeRXtd7oMxRXDbF674vVeJq7Ye1ea57N1NLFR4a9LkrPm9FSeWDoCxXvMhk6UJJWXHh4zFcuEJmACmJuk
+│     [0m
+├  Transaction Execution Info:
+│    Gas used: 27.6 Tgas
+│    Transaction fee: 0.0027296241873994 NEAR
+│    Transaction ID: 5VXVXhiFkyDe6yVttd3LGZWdfDnVLsjYLG13dQww6KWP
+│    To see the transaction in the transaction explorer, please open this url in your browser:
+│    https://explorer.testnet.near.org/transactions/5VXVXhiFkyDe6yVttd3LGZWdfDnVLsjYLG13dQww6KWP
+│     [0m
+├  Function execution logs:
+│    [36mLogs [croc-milestone-43231347872-1.testnet]:[39m
+│      EVENT_JSON:{"standard":"nep141","version":"1.0.0","event":"ft_mint","data":[{"owner_id":"croc-milestone-43231347872-1.testnet","amount":"300000000000000000000000000","memo":"initial burn-only treasury"}]}
+│    [36mLogs [croc-milestone-43231347872-1.testnet]:[39m   [2mNo logs[0m
+│     [0m
+├  Function execution return value:
+│    Empty return value
+│     [0m
+
+Contract code has been successfully deployed.
+The "new" call to <croc-milestone-43231347872-1.testnet> on behalf of <croc-milestone-43231347872-1.testnet> succeeded.
+
+
+
+
+Here is your console command if you need to script it or re-run:
+    [33mnear contract deploy croc-milestone-43231347872-1.testnet use-file /home/runner/work/crying-croc/crying-croc/target/wasm32-unknown-unknown/release/crying_croc.wasm with-init-call new json-args '{"day_length_ns":300000000000,"target":5}' prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' network-config testnet sign-with-access-key-file /home/runner/work/_temp/croc-milestone-keys/contract/4444c13f3f4ced9320b1071729bb31332817ba0301eefa655821d988a9dac1e4.json send[39m
+

@@ -1,0 +1,20 @@
+├  Your transaction:
+│    signer_id:    testnet
+│    actions:
+│       -- create account:      croc-checker1-43231347872-1.testnet
+│       -- add access key:     
+│                       public key:   ed25519:9d3qAeiWNhGB2kT4xoyPwmsv3zyuBv8wQixoXNCGD3Kc
+│                       permission:   FullAccess
+│     [0m
+├  Transaction Execution Info:
+│    Transaction ID: 8E2dokKVBbBmiT4EVhaVKB8USUVNkxc6VhvvGJcZP6R9
+│    To see the transaction in the transaction explorer, please open this url in your browser:
+│    https://explorer.testnet.near.org/transactions/8E2dokKVBbBmiT4EVhaVKB8USUVNkxc6VhvvGJcZP6R9
+[0m
+New account <croc-checker1-43231347872-1.testnet> created successfully.
+
+
+
+Here is your console command if you need to script it or re-run:
+    [33m/home/runner/work/_temp/croc-milestone-cli-home/bin/near account create-account sponsor-by-faucet-service croc-checker1-43231347872-1.testnet use-manually-provided-public-key ed25519:9d3qAeiWNhGB2kT4xoyPwmsv3zyuBv8wQixoXNCGD3Kc network-config testnet create[39m
+

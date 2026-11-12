@@ -1,0 +1,7 @@
+
+The file "/home/runner/work/_temp/croc-milestone-keys/checker4/4b9cfb0575aa66ae357949be00708d1d3264cb20e78c8a6b22fad4675ca2f339.json" was saved successfully
+
+
+Here is your console command if you need to script it or re-run:
+    [33m/home/runner/work/_temp/croc-milestone-cli-home/bin/near account create-account fund-later use-auto-generation save-to-folder /home/runner/work/_temp/croc-milestone-keys/checker4[39m
+

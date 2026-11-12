@@ -1,0 +1,39 @@
+├  Unsigned transaction:
+│    signer_id:    croc-checker2-43231347872-1.testnet
+│    receiver_id:  croc-milestone-43231347872-1.testnet
+│    actions:
+│       -- function call:      
+│                       method name:  check_in
+│                       args:         {}
+│                       gas:          30.0 Tgas
+│                       deposit:      0 NEAR
+│     [0m
+├  Your transaction was signed successfully.
+│    Public key: ed25519:JBRKhL3xnRRX4NBQd9cRWBvaeZ2JxwFcKXRSfb72wJu5
+│    Signature:  ed25519:3EDKTUJkYxQXcb5LGQ3JU5bp3xS6Vw9sWV3szFKVxFdQPmqXoA75wCAjswUS9nPPBL1VKQPSvJqZWNgQ46HTj8hL
+│     [0m
+├  Transaction Execution Info:
+│    Gas used: 2.6 Tgas
+│    Transaction fee: 0.0002304242226317 NEAR
+│    Transaction ID: GrwdAsvrBTy4Ne4LHPX6GNJD9pcwiCcdDT9XyrRzTQiS
+│    To see the transaction in the transaction explorer, please open this url in your browser:
+│    https://explorer.testnet.near.org/transactions/GrwdAsvrBTy4Ne4LHPX6GNJD9pcwiCcdDT9XyrRzTQiS
+│     [0m
+├  Function execution logs:
+│    [36mLogs [croc-milestone-43231347872-1.testnet]:[39m
+│      EVENT_JSON:{"standard":"croc","version":"1.0.0","event":"check_in","data":[{"account_id":"croc-checker2-43231347872-1.testnet","day":5981639,"day_count":2}]}
+│    [36mLogs [croc-checker2-43231347872-1.testnet]:[39m   [2mNo logs[0m
+│     [0m
+├  Function execution return value:
+│    Empty return value
+│     [0m
+
+
+The "check_in" call to <croc-milestone-43231347872-1.testnet> on behalf of <croc-checker2-43231347872-1.testnet> succeeded.
+
+
+
+
+Here is your console command if you need to script it or re-run:
+    [33m/home/runner/work/_temp/croc-milestone-cli-home/bin/near contract call-function as-transaction croc-milestone-43231347872-1.testnet check_in json-args {} prepaid-gas '30.0 Tgas' attached-deposit '0 NEAR' sign-as croc-checker2-43231347872-1.testnet network-config testnet sign-with-access-key-file /home/runner/work/_temp/croc-milestone-keys/checker2/ff41fcb8617157556646aa0d7fc8a7a1075c31fbd5a06c24ff9fe28eca1722f0.json send[39m
+

@@ -1,0 +1,40 @@
+├  Unsigned transaction:
+│    signer_id:    croc-milestone-43231347872-1.testnet
+│    receiver_id:  croc-milestone-43231347872-1.testnet
+│    actions:
+│       -- function call:      
+│                       method name:  settle
+│                       args:         {}
+│                       gas:          100.0 Tgas
+│                       deposit:      0 NEAR
+│     [0m
+├  Your transaction was signed successfully.
+│    Public key: ed25519:5bVXmxJpndTVk7qHqQeGH5vphDGh6EzYxpPKN1ATNfLw
+│    Signature:  ed25519:62KR2fCScxRAmqv6gyNBfPyppaQfpjNnEwgRF2ZHY8vG4jbqW2wihqQJVhEazeiuFR4iXgdz66rw1QjRy2Y4wjNd
+│     [0m
+├  Transaction Execution Info:
+│    Gas used: 2.7 Tgas
+│    Transaction fee: 0.0002471196354664 NEAR
+│    Transaction ID: FtPcxKEpGZLJNinV7mMA3TGjkTEJ5rpSWWZ2ru9yHS7d
+│    To see the transaction in the transaction explorer, please open this url in your browser:
+│    https://explorer.testnet.near.org/transactions/FtPcxKEpGZLJNinV7mMA3TGjkTEJ5rpSWWZ2ru9yHS7d
+│     [0m
+├  Function execution logs:
+│    [36mLogs [croc-milestone-43231347872-1.testnet]:[39m
+│      EVENT_JSON:{"standard":"nep141","version":"1.0.0","event":"ft_burn","data":[{"owner_id":"croc-milestone-43231347872-1.testnet","amount":"15000000000000000000000000","memo":"missed day treasury burn"}]}
+│      EVENT_JSON:{"standard":"croc","version":"1.0.0","event":"settled_day","data":[{"day":5981638,"checker_count":0,"succeeded":false,"reward_per_checker":"0","minted_to_treasury":"0","burned":"15000000000000000000000000"}]}
+│    [36mLogs [croc-milestone-43231347872-1.testnet]:[39m   [2mNo logs[0m
+│     [0m
+├  Function execution return value:
+│    Empty return value
+│     [0m
+
+
+The "settle" call to <croc-milestone-43231347872-1.testnet> on behalf of <croc-milestone-43231347872-1.testnet> succeeded.
+
+
+
+
+Here is your console command if you need to script it or re-run:
+    [33m/home/runner/work/_temp/croc-milestone-cli-home/bin/near contract call-function as-transaction croc-milestone-43231347872-1.testnet settle json-args {} prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' sign-as croc-milestone-43231347872-1.testnet network-config testnet sign-with-access-key-file /home/runner/work/_temp/croc-milestone-keys/contract/4444c13f3f4ced9320b1071729bb31332817ba0301eefa655821d988a9dac1e4.json send[39m
+

@@ -1,0 +1,7 @@
+
+The file "/home/runner/work/_temp/croc-milestone-keys/contract/4444c13f3f4ced9320b1071729bb31332817ba0301eefa655821d988a9dac1e4.json" was saved successfully
+
+
+Here is your console command if you need to script it or re-run:
+    [33m/home/runner/work/_temp/croc-milestone-cli-home/bin/near account create-account fund-later use-auto-generation save-to-folder /home/runner/work/_temp/croc-milestone-keys/contract[39m
+

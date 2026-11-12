@@ -1,0 +1,44 @@
+├  Unsigned transaction:
+│    signer_id:    croc-checker1-43231347872-1.testnet
+│    receiver_id:  croc-milestone-43231347872-1.testnet
+│    actions:
+│       -- function call:      
+│                       method name:  storage_deposit
+│                       args:         {
+│                                       "account_id": "croc-checker1-43231347872-1.testnet",
+│                                       "registration_only": true
+│                                     }
+│                       gas:          30.0 Tgas
+│                       deposit:      0.00125 NEAR
+│     [0m
+├  Your transaction was signed successfully.
+│    Public key: ed25519:9d3qAeiWNhGB2kT4xoyPwmsv3zyuBv8wQixoXNCGD3Kc
+│    Signature:  ed25519:4drumxBG6Ls8UbBgUrfeS1iBC6qdQPxRLuXXS2EkLB8Kr16owiSBZdZ2skN36XfFRyhNbGgi8Bjy5WyesNA7Ljq5
+│     [0m
+├  Transaction Execution Info:
+│    Gas used: 2.3 Tgas
+│    Transaction fee: 0.000205292208215 NEAR
+│    Transaction ID: AHvvjeycrpBENThUKJ4RF3tNUvnPmtDMH4A68QeCB695
+│    To see the transaction in the transaction explorer, please open this url in your browser:
+│    https://explorer.testnet.near.org/transactions/AHvvjeycrpBENThUKJ4RF3tNUvnPmtDMH4A68QeCB695
+│     [0m
+├  Function execution logs:
+│    [36mLogs [croc-milestone-43231347872-1.testnet]:[39m   [2mNo logs[0m
+│    [36mLogs [croc-checker1-43231347872-1.testnet]:[39m   [2mNo logs[0m
+│     [0m
+
+Function execution return value (printed to stdout):
+{
+  "available": "0",
+  "total": "1250000000000000000000"
+}
+
+
+The "storage_deposit" call to <croc-milestone-43231347872-1.testnet> on behalf of <croc-checker1-43231347872-1.testnet> succeeded.
+
+
+
+
+Here is your console command if you need to script it or re-run:
+    [33m/home/runner/work/_temp/croc-milestone-cli-home/bin/near contract call-function as-transaction croc-milestone-43231347872-1.testnet storage_deposit json-args '{"account_id":"croc-checker1-43231347872-1.testnet","registration_only":true}' prepaid-gas '30.0 Tgas' attached-deposit '0.00125 NEAR' sign-as croc-checker1-43231347872-1.testnet network-config testnet sign-with-access-key-file /home/runner/work/_temp/croc-milestone-keys/checker1/80199add8c9fb52ee26d46b47cfde4fb388c8967d33074a06b173a502728686f.json send[39m
+

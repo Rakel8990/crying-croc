@@ -1,0 +1,42 @@
+├  Unsigned transaction:
+│    signer_id:    croc-milestone-43231347872-1.testnet
+│    receiver_id:  croc-milestone-43231347872-1.testnet
+│    actions:
+│       -- function call:      
+│                       method name:  settle
+│                       args:         {}
+│                       gas:          100.0 Tgas
+│                       deposit:      0 NEAR
+│     [0m
+├  Your transaction was signed successfully.
+│    Public key: ed25519:5bVXmxJpndTVk7qHqQeGH5vphDGh6EzYxpPKN1ATNfLw
+│    Signature:  ed25519:v2ahsWB3WkoKhH4xdeoUiQFU2Z3Dtn8L7BMu5zAXQ2w86o8CwgDKuDQVdsweafRE5nBKRojZpofUdLW3FTHjHBx
+│     [0m
+├  Transaction Execution Info:
+│    Gas used: 3.1 Tgas
+│    Transaction fee: 0.0002838178130326 NEAR
+│    Transaction ID: Bz4YbkJ3XEQD5h6YPFr6kiicU3THMqWLo895ZDSiAT18
+│    To see the transaction in the transaction explorer, please open this url in your browser:
+│    https://explorer.testnet.near.org/transactions/Bz4YbkJ3XEQD5h6YPFr6kiicU3THMqWLo895ZDSiAT18
+│     [0m
+├  Function execution logs:
+│    [36mLogs [croc-milestone-43231347872-1.testnet]:[39m
+│      EVENT_JSON:{"standard":"nep141","version":"1.0.0","event":"ft_mint","data":[{"owner_id":"escrow.croc-milestone-43231347872-1.testnet","amount":"3072033572333906250000000","memo":"daily checker rewards escrow"}]}
+│      EVENT_JSON:{"standard":"nep141","version":"1.0.0","event":"ft_mint","data":[{"owner_id":"croc-milestone-43231347872-1.testnet","amount":"341337063592656250000000","memo":"daily treasury allocation"}]}
+│      EVENT_JSON:{"standard":"croc","version":"1.0.0","event":"streak_change","data":[{"previous":5,"current":6,"longest":6}]}
+│      EVENT_JSON:{"standard":"croc","version":"1.0.0","event":"settled_day","data":[{"day":5981644,"checker_count":5,"succeeded":true,"reward_per_checker":"614406714466781250000000","minted_to_treasury":"341337063592656250000000","burned":"0"}]}
+│    [36mLogs [croc-milestone-43231347872-1.testnet]:[39m   [2mNo logs[0m
+│     [0m
+├  Function execution return value:
+│    Empty return value
+│     [0m
+
+
+The "settle" call to <croc-milestone-43231347872-1.testnet> on behalf of <croc-milestone-43231347872-1.testnet> succeeded.
+
+
+
+
+Here is your console command if you need to script it or re-run:
+    [33m/home/runner/work/_temp/croc-milestone-cli-home/bin/near contract call-function as-transaction croc-milestone-43231347872-1.testnet settle json-args {} prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' sign-as croc-milestone-43231347872-1.testnet network-config testnet sign-with-access-key-file /home/runner/work/_temp/croc-milestone-keys/contract/4444c13f3f4ced9320b1071729bb31332817ba0301eefa655821d988a9dac1e4.json send[39m
+

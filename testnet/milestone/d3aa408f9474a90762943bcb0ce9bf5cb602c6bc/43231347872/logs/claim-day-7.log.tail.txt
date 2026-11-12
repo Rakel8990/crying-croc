@@ -1,0 +1,40 @@
+├  Unsigned transaction:
+│    signer_id:    croc-checker1-43231347872-1.testnet
+│    receiver_id:  croc-milestone-43231347872-1.testnet
+│    actions:
+│       -- function call:      
+│                       method name:  claim
+│                       args:         {}
+│                       gas:          30.0 Tgas
+│                       deposit:      0 NEAR
+│     [0m
+├  Your transaction was signed successfully.
+│    Public key: ed25519:9d3qAeiWNhGB2kT4xoyPwmsv3zyuBv8wQixoXNCGD3Kc
+│    Signature:  ed25519:5Uck4odo7CzYCvPeWsuRmYHcRPZvJSaCggWrCNHhax3N6raVmbZoETxXPLmFZPbdeYdr7RMGZ8xwSFKbtn3wpXTt
+│     [0m
+├  Transaction Execution Info:
+│    Gas used: 3.0 Tgas
+│    Transaction fee: 0.0002745378791657 NEAR
+│    Transaction ID: 7nmVrvCPzJGnKFd3vSKK6PCwBpjueqrF7kZbPHPEUvSX
+│    To see the transaction in the transaction explorer, please open this url in your browser:
+│    https://explorer.testnet.near.org/transactions/7nmVrvCPzJGnKFd3vSKK6PCwBpjueqrF7kZbPHPEUvSX
+│     [0m
+├  Function execution logs:
+│    [36mLogs [croc-milestone-43231347872-1.testnet]:[39m
+│      EVENT_JSON:{"standard":"nep141","version":"1.0.0","event":"ft_transfer","data":[{"old_owner_id":"escrow.croc-milestone-43231347872-1.testnet","new_owner_id":"croc-checker1-43231347872-1.testnet","amount":"1186161790341119542187500","memo":"CROC check-in reward"}]}
+│      EVENT_JSON:{"standard":"croc","version":"1.0.0","event":"claim","data":[{"account_id":"croc-checker1-43231347872-1.testnet","day":5981645,"amount":"1186161790341119542187500","trigger":"claim"}]}
+│    [36mLogs [croc-checker1-43231347872-1.testnet]:[39m   [2mNo logs[0m
+│     [0m
+
+Function execution return value (printed to stdout):
+"1186161790341119542187500"
+
+
+The "claim" call to <croc-milestone-43231347872-1.testnet> on behalf of <croc-checker1-43231347872-1.testnet> succeeded.
+
+
+
+
+Here is your console command if you need to script it or re-run:
+    [33m/home/runner/work/_temp/croc-milestone-cli-home/bin/near contract call-function as-transaction croc-milestone-43231347872-1.testnet claim json-args {} prepaid-gas '30.0 Tgas' attached-deposit '0 NEAR' sign-as croc-checker1-43231347872-1.testnet network-config testnet sign-with-access-key-file /home/runner/work/_temp/croc-milestone-keys/checker1/80199add8c9fb52ee26d46b47cfde4fb388c8967d33074a06b173a502728686f.json send[39m
+
