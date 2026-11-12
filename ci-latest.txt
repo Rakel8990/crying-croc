@@ -1,5 +1,5 @@
-Commit SHA: fb1ea339f417f91eab77b1ed6add12c6052d4aa1
-UTC time: 2026-11-12 06:49:42 UTC
+Commit SHA: 8737cedab9b210b342e32fe3207157fdb6e535e1
+UTC time: 2026-11-12 06:53:52 UTC
 Final conclusion: SUCCESS (unit tests: 0, cargo build: 0)
 Last 300 lines of Cargo output:
 [1m[92m    Updating[0m crates.io index
@@ -39,42 +39,42 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m serde_derive v1.0.229
 [1m[92m   Compiling[0m borsh-derive v1.8.1
 [1m[92m   Compiling[0m thiserror-impl v2.0.21
+[1m[92m   Compiling[0m thiserror v2.0.21
 [1m[92m   Compiling[0m borsh v1.8.1
 [1m[92m   Compiling[0m serde v1.0.229
+[1m[92m   Compiling[0m zerofrom-derive v0.1.8
 [1m[92m   Compiling[0m lock_api v0.4.14
 [1m[92m   Compiling[0m parking_lot v0.12.5
-[1m[92m   Compiling[0m zerofrom-derive v0.1.8
-[1m[92m   Compiling[0m thiserror v2.0.21
+[1m[92m   Compiling[0m zerofrom v0.1.8
 [1m[92m   Compiling[0m yoke-derive v0.8.4
 [1m[92m   Compiling[0m schemars v0.8.22
-[1m[92m   Compiling[0m zerofrom v0.1.8
 [1m[92m   Compiling[0m zerovec-derive v0.11.7
 [1m[92m   Compiling[0m yoke v0.8.4
 [1m[92m   Compiling[0m derive_arbitrary v1.5.0
-[1m[92m   Compiling[0m arbitrary v1.5.0
 [1m[92m   Compiling[0m zerovec v0.11.9
+[1m[92m   Compiling[0m arbitrary v1.5.0
 [1m[92m   Compiling[0m num-rational v0.3.2
-[1m[92m   Compiling[0m displaydoc v0.2.7
 [1m[92m   Compiling[0m serde_repr v0.1.21
+[1m[92m   Compiling[0m displaydoc v0.2.7
 [1m[92m   Compiling[0m tokio v1.48.0
 [1m[92m   Compiling[0m hex v0.4.3
-[1m[92m   Compiling[0m tinystr v0.8.5
-[1m[92m   Compiling[0m icu_locale_core v2.4.0
 [1m[92m   Compiling[0m uint v0.9.5
+[1m[92m   Compiling[0m tinystr v0.8.5
 [1m[92m   Compiling[0m primitive-types v0.10.1
+[1m[92m   Compiling[0m icu_locale_core v2.4.0
 [1m[92m   Compiling[0m zerotrie v0.2.5
 [1m[92m   Compiling[0m potential_utf v0.1.6
 [1m[92m   Compiling[0m near-token v0.3.6
 [1m[92m   Compiling[0m serde_yaml v0.9.34+deprecated
-[1m[92m   Compiling[0m icu_collections v2.4.0
 [1m[92m   Compiling[0m icu_provider v2.4.0
+[1m[92m   Compiling[0m icu_collections v2.4.0
 [1m[92m   Compiling[0m near-gas v0.3.7
 [1m[92m   Compiling[0m near-account-id v2.6.0
 [1m[92m   Compiling[0m bytesize v1.3.3
-[1m[92m   Compiling[0m icu_normalizer v2.4.0
 [1m[92m   Compiling[0m icu_properties v2.4.0
-[1m[92m   Compiling[0m near-account-id v1.1.4
+[1m[92m   Compiling[0m icu_normalizer v2.4.0
 [1m[92m   Compiling[0m ordered-float v4.6.0
+[1m[92m   Compiling[0m near-account-id v1.1.4
 [1m[92m   Compiling[0m chrono v0.4.45
 [1m[92m   Compiling[0m near-primitives-core v0.37.4
 [1m[92m   Compiling[0m idna_adapter v1.2.2
@@ -82,8 +82,8 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m idna v1.1.0
 [1m[92m   Compiling[0m hyper v1.12.0
 [1m[92m   Compiling[0m near-primitives-core v0.31.1
-[1m[92m   Compiling[0m near-config-utils v0.37.4
 [1m[92m   Compiling[0m jsonptr v0.7.1
+[1m[92m   Compiling[0m near-config-utils v0.37.4
 [1m[92m   Compiling[0m hyper-util v0.1.21
 [1m[92m   Compiling[0m ureq-proto v0.6.5
 [1m[92m   Compiling[0m near-crypto v0.37.4
@@ -93,15 +93,15 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m url v2.5.8
 [1m[92m   Compiling[0m near-fmt v0.37.4
 [1m[92m   Compiling[0m near-parameters v0.37.4
-[1m[92m   Compiling[0m near-config-utils v0.31.1
 [1m[92m   Compiling[0m near-time v0.37.4
+[1m[92m   Compiling[0m near-config-utils v0.31.1
 [1m[92m   Compiling[0m http-body-util v0.1.5
 [1m[92m   Compiling[0m webpki-roots v1.0.12
 [1m[92m   Compiling[0m near-crypto v0.31.1
-[1m[92m   Compiling[0m ureq v3.4.2
+[1m[92m   Compiling[0m near_schemafy_lib v0.7.0
 [1m[92m   Compiling[0m near-primitives v0.37.4
 [1m[92m   Compiling[0m near-abi v0.4.5
-[1m[92m   Compiling[0m near_schemafy_lib v0.7.0
+[1m[92m   Compiling[0m ureq v3.4.2
 [1m[92m   Compiling[0m tokio-native-tls v0.3.1
 [1m[92m   Compiling[0m tower-http v0.6.11
 [1m[92m   Compiling[0m near-parameters v0.31.1
@@ -114,9 +114,9 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m serde_urlencoded v0.7.1
 [1m[92m   Compiling[0m rustls-native-certs v0.8.5
 [1m[92m   Compiling[0m near-sdk-macros v5.17.2
-[1m[92m   Compiling[0m rustls-platform-verifier v0.7.1
 [1m[92m   Compiling[0m near-vm-runner v0.31.1
 [1m[92m   Compiling[0m near-primitives v0.31.1
+[1m[92m   Compiling[0m rustls-platform-verifier v0.7.1
 [1m[92m   Compiling[0m reqwest v0.12.28
 [1m[92m   Compiling[0m hyper-rustls v0.27.10
 [1m[92m   Compiling[0m near-abi-client-macros v0.1.1
@@ -133,7 +133,7 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m near-contract-standards v5.17.2
 [1m[92m   Compiling[0m near-jsonrpc-client v0.22.0
 [1m[92m   Compiling[0m crying-croc v0.1.0 (/home/runner/work/crying-croc/crying-croc)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 43.08s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 56.83s
 [1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/crying_croc-7fa2b4761da53a16)
 
 running 41 tests
@@ -147,8 +147,8 @@ test tests::claim_moves_exactly_the_recorded_reward_from_escrow_to_claimer ... o
 test tests::claim_twice_is_rejected - should panic ... ok
 test tests::controllable_clock_uses_the_selected_day ... ok
 test tests::ft_metadata_matches_project_token_metadata ... ok
-test tests::claim_pays_daily_reward_and_milestone_bonus_exactly_once ... ok
 test tests::get_day_is_none_before_settlement ... ok
+test tests::claim_pays_daily_reward_and_milestone_bonus_exactly_once ... ok
 test tests::get_day_returns_good_day_record_after_settlement ... ok
 test tests::get_day_returns_missed_day_record_after_settlement ... ok
 test tests::climbing_to_streak_seven_again_does_not_pay_the_milestone_twice ... ok
@@ -157,13 +157,13 @@ test tests::milestone_bonus_transfer_emits_exactly_one_nep141_transfer_event ...
 test tests::missed_day_never_pays_a_milestone_bonus ... ok
 test tests::next_check_in_lazily_pays_daily_reward_and_milestone_bonus ... ok
 test tests::one_checker_milestone_moves_exact_bonus_without_changing_supply ... ok
+test tests::pending_reward_is_paid_before_a_new_check_in_is_recorded ... ok
 test tests::reward_escrow_cannot_transfer_with_ft_transfer - should panic ... ok
 test tests::reward_escrow_cannot_transfer_with_ft_transfer_call - should panic ... ok
-test tests::many_checker_milestone_floors_per_checker_and_keeps_dust_in_treasury ... ok
-test tests::pending_reward_is_paid_before_a_new_check_in_is_recorded ... ok
 test tests::settle_is_safe_to_call_twice ... ok
-test tests::skipped_days_block_check_in_until_settle_is_called ... ok
+test tests::many_checker_milestone_floors_per_checker_and_keeps_dust_in_treasury ... ok
 test tests::rounded_zero_milestone_bonus_is_marked_paid_and_never_exceeds_treasury ... ok
+test tests::skipped_days_block_check_in_until_settle_is_called ... ok
 test tests::storage_unregister_with_force_is_refused_for_unresolved_reward - should panic ... ok
 test tests::storage_unregister_without_force_is_refused_for_unresolved_reward - should panic ... ok
 test tests::supply_matches_treasury_escrow_and_holders_after_day_claim_and_transfer ... ok
@@ -179,7 +179,7 @@ test tests::milestone_bonus_is_paid_only_at_streaks_7_15_25_and_100 ... ok
 test tests::total_supply_never_exceeds_one_billion ... ok
 test tests::sixty_day_replay_matches_independent_reference_and_simulation_csv ... ok
 
-test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 24.87s
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.13s
 
 [1m[92m   Compiling[0m syn v3.0.10
 [1m[92m   Compiling[0m itoa v1.0.19
@@ -189,10 +189,10 @@ test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 [1m[92m   Compiling[0m borsh v1.8.1
 [1m[92m   Compiling[0m serde v1.0.229
 [1m[92m   Compiling[0m near-sdk-macros v5.17.2
+[1m[92m   Compiling[0m near-gas v0.3.7
 [1m[92m   Compiling[0m near-account-id v1.1.4
 [1m[92m   Compiling[0m near-token v0.3.6
-[1m[92m   Compiling[0m near-gas v0.3.7
 [1m[92m   Compiling[0m near-sdk v5.17.2
 [1m[92m   Compiling[0m near-contract-standards v5.17.2
 [1m[92m   Compiling[0m crying-croc v0.1.0 (/home/runner/work/crying-croc/crying-croc)
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 6.47s
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 8.93s
