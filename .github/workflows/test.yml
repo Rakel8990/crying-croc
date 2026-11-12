@@ -14,6 +14,11 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Check out the ci-logs branch
+        uses: actions/checkout@v4
+        with:
+          ref: ci-logs
+          path: ci-logs
       - name: Run actionlint v1.7.12
         shell: bash
         run: |
@@ -49,16 +54,14 @@ jobs:
           if [ "$unit_status" -ne 0 ] || [ "$build_status" -ne 0 ]; then
             exit 1
           fi
-      - name: Publish the latest log on the ci-logs orphan branch
+      - name: Publish the latest log to ci-logs
         if: always()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
           output_file="$RUNNER_TEMP/croc-cargo-output.log"
           report_file="$RUNNER_TEMP/ci-latest.txt"
-          log_repo="$RUNNER_TEMP/croc-ci-log-repo-$GITHUB_RUN_ID"
+          log_repo="$GITHUB_WORKSPACE/ci-logs"
 
           {
             echo "Commit SHA: $GITHUB_SHA"
@@ -72,13 +75,23 @@ jobs:
             fi
           } > "$report_file"
 
-          mkdir -p "$log_repo"
           cp "$report_file" "$log_repo/ci-latest.txt"
-          cd "$log_repo"
-          git init --quiet --initial-branch=ci-logs
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ci-latest.txt
-          git commit --quiet -m "Update CI log for $GITHUB_SHA"
-          auth_header="$(printf 'x-access-token:%s' "$GITHUB_TOKEN" | base64 -w 0)"
-          git -c "http.extraheader=AUTHORIZATION: basic $auth_header" push --force "https://github.com/$GITHUB_REPOSITORY.git" HEAD:ci-logs
+          git -C "$log_repo" config user.name "github-actions[bot]"
+          git -C "$log_repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$log_repo" add ci-latest.txt
+          if ! git -C "$log_repo" diff --cached --quiet; then
+            git -C "$log_repo" commit --quiet -m "Update CI log for $GITHUB_SHA"
+            pushed=false
+            for attempt in 1 2 3; do
+              if git -C "$log_repo" push origin HEAD:ci-logs; then
+                pushed=true
+                break
+              fi
+              if (( attempt < 3 )); then
+                git -C "$log_repo" fetch origin ci-logs
+                git -C "$log_repo" rebase origin/ci-logs
+                sleep "$((attempt * 2))"
+              fi
+            done
+            [[ "$pushed" == true ]] || { echo "Could not publish the CI log after 3 push attempts."; exit 1; }
+          fi

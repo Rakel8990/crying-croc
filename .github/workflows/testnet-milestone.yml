@@ -1,14 +1,741 @@
-name: CROC milestone workflow (stub)
+name: CROC milestone testnet verification
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: croc-testnet-milestone
+  cancel-in-progress: false
 
 jobs:
-  stub:
+  deploy-smoke-test:
+    if: github.ref == 'refs/heads/milestone'
     runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      CROC_COPY: milestone
+      CROC_DAY_LENGTH_NS: "300000000000"
+      CROC_TARGET: "5"
+      NEAR_RPC: https://rpc.testnet.near.org
+      # FastNear is listed as a public Testnet provider by NEAR:
+      # https://docs.near.org/api/rpc/providers
+      NEAR_RPC_FALLBACK: https://test.rpc.fastnear.com
+      NEAR_NETWORK: testnet
+      CROC_SOURCE_SHA: ${{ github.sha }}
+      CROC_RUN_ID: ${{ github.run_id }}
+      CROC_RUN_ATTEMPT: ${{ github.run_attempt }}
+
     steps:
-      - name: Print stub
-        run: echo "stub"
+      - name: Check out the selected milestone commit
+        uses: actions/checkout@v4
+        with:
+          ref: milestone
+
+      - name: Check out the sanitized-results branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}
+          ref: ci-logs
+          path: ci-logs
+          token: ${{ github.token }}
+
+      - name: Install stable Rust with the WebAssembly target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Set temporary runner paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            printf 'CROC_RUN_DIR=%s/croc-milestone-run\n' "$RUNNER_TEMP"
+            printf 'CROC_KEY_DIR=%s/croc-milestone-keys\n' "$RUNNER_TEMP"
+            printf 'CROC_CLI_HOME=%s/croc-milestone-cli-home\n' "$RUNNER_TEMP"
+            printf 'CROC_NEAR_BIN=%s/croc-milestone-cli-home/bin/near\n' "$RUNNER_TEMP"
+            printf 'CROC_NEAR_CACHE_DIR=%s/croc-near-cli-cache\n' "$RUNNER_TEMP"
+          } >> "$GITHUB_ENV"
+
+      - name: Prepare pinned near-cli-rs binary cache
+        shell: bash
+        run: mkdir -p "$RUNNER_TEMP/croc-near-cli-cache"
+
+      - name: Restore pinned near-cli-rs binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/croc-near-cli-cache/
+          key: near-cli-rs-v0.31.1-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Install Rust, build the Wasm, and install pinned near-cli-rs
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          mkdir -p "$CROC_RUN_DIR/logs" "$CROC_RUN_DIR/output" "$CROC_KEY_DIR" "$CROC_CLI_HOME"
+          chmod 700 "$CROC_RUN_DIR" "$CROC_KEY_DIR" "$CROC_CLI_HOME"
+          exec > >(tee -a "$CROC_RUN_DIR/logs/run.log") 2>&1
+          cargo build --target wasm32-unknown-unknown --release >"$CROC_RUN_DIR/logs/wasm-build.log" 2>&1 || {
+            echo "Release Wasm build failed; sanitized build diagnostic follows."
+            sed -E 's/ed''25519:[[:alnum:]]+/[REDACTED]/g; s/sec''ret/[REDACTED]/Ig' "$CROC_RUN_DIR/logs/wasm-build.log" | tail -n 80
+            exit 1
+          }
+          cli_cache_file="$CROC_NEAR_CACHE_DIR/near"
+          if [[ -x "$cli_cache_file" ]]; then
+            mkdir -p "$CROC_CLI_HOME/bin"
+            cp "$cli_cache_file" "$CROC_NEAR_BIN"
+            chmod 700 "$CROC_NEAR_BIN"
+            install_method="cached-binary"
+          else
+            installer_script="$CROC_RUN_DIR/logs/near-cli-rs-installer.sh"
+            installer_download_log="$CROC_RUN_DIR/logs/near-installer-download.log"
+            installer_log="$CROC_RUN_DIR/logs/near-installer.log"
+            installer_url="https://github.com/near/near-cli-rs/releases/download/v0.31.1/near-cli-rs-installer.sh"
+            if curl --proto '=https' --tlsv1.2 --retry 5 --retry-delay 10 --retry-all-errors -fsSL "$installer_url" -o "$installer_script" >"$installer_download_log" 2>&1 \
+              && CARGO_HOME="$CROC_CLI_HOME" sh "$installer_script" >"$installer_log" 2>&1 \
+              && test -x "$CROC_NEAR_BIN"; then
+              install_method="prebuilt-installer"
+            else
+              cargo_install_log="$CROC_RUN_DIR/logs/near-cargo-install.log"
+              if CARGO_HOME="$CROC_CLI_HOME" cargo install near-cli-rs --version 0.31.1 --locked --no-default-features --root "$CROC_CLI_HOME" >"$cargo_install_log" 2>&1 \
+                && test -x "$CROC_NEAR_BIN"; then
+                install_method="cargo-fallback"
+              else
+                install_exit_code=$?
+                echo "near-cli-rs install failed (exit code $install_exit_code)."
+                exit "$install_exit_code"
+              fi
+            fi
+            cp "$CROC_NEAR_BIN" "$cli_cache_file"
+            chmod 700 "$cli_cache_file"
+          fi
+          if cli_version_output="$("$CROC_NEAR_BIN" --version 2>/dev/null)" && [[ "$cli_version_output" == *"0.31.1"* ]]; then
+            :
+          else
+            echo "near-cli-rs version verification failed (exit code 1)."
+            exit 1
+          fi
+          echo "$CROC_CLI_HOME/bin" >> "$GITHUB_PATH"
+          printf 'near-cli-rs method=%s version=0.31.1\n' "$install_method"
+
+      - name: Self-test milestone RPC stdout capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          exec > >(tee -a "$CROC_RUN_DIR/logs/rpc-self-test.log") 2>&1
+          source "$GITHUB_WORKSPACE/scripts/milestone_rpc.sh"
+          fake_curl_dir="$CROC_RUN_DIR/fake-curl"
+          fake_response_file="$CROC_RUN_DIR/output/rpc-stdout-self-test.json"
+          fake_body='{"jsonrpc":"2.0","result":{"probe":"only-body"}}'
+          mkdir -p "$fake_curl_dir"
+          cat > "$fake_curl_dir/curl" <<'FAKE_CURL'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          output_file=""
+          while (($#)); do
+            if [[ "$1" == "--output" ]]; then
+              output_file="$2"
+              shift 2
+            else
+              shift
+            fi
+          done
+          [[ -n "$output_file" ]]
+          printf '%s' '{"jsonrpc":"2.0","result":{"probe":"only-body"}}' > "$output_file"
+          printf '200'
+          FAKE_CURL
+          chmod 700 "$fake_curl_dir/curl"
+          original_path="$PATH"
+          export PATH="$fake_curl_dir:$PATH"
+          fake_capture="$(rpc_post_to_file "RPC stdout self-test" '{}' "$fake_response_file")"
+          export PATH="$original_path"
+          [[ "$fake_capture" == "$fake_body" ]] || {
+            printf 'RPC stdout self-test failed: expected=%s actual=%s\n' "$fake_body" "$fake_capture"
+            exit 1
+          }
+          echo "RPC stdout self-test verified captured output contains only the fake response body."
+
+      - name: Self-test canonical milestone view comparisons
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          exec > >(tee -a "$CROC_RUN_DIR/logs/view-comparison-self-test.log") 2>&1
+          source "$GITHUB_WORKSPACE/scripts/milestone_rpc.sh"
+          fixture_dir="$CROC_RUN_DIR/output/view-comparison-fixtures"
+          mkdir -p "$fixture_dir"
+          python3 - "$fixture_dir" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          destination = pathlib.Path(sys.argv[1])
+          payloads = {
+              "array_pretty": "[\n  false,\n  true\n]",
+              "array_compact": "[false,true]",
+              "quoted_string": '"CROC"',
+              "number": "5",
+              "trailing_newlines": "5\n\n\n",
+          }
+          for name, serialized_value in payloads.items():
+              response = {"jsonrpc": "2.0", "result": {"result": list(serialized_value.encode("utf-8"))}}
+              (destination / f"{name}.json").write_text(json.dumps(response), encoding="utf-8")
+          PY
+          normalized() {
+            normalize_rpc_view_value < "$1"
+          }
+          pretty_array="$(normalized "$fixture_dir/array_pretty.json")"
+          compact_array="$(normalized "$fixture_dir/array_compact.json")"
+          quoted_string="$(normalized "$fixture_dir/quoted_string.json")"
+          number="$(normalized "$fixture_dir/number.json")"
+          trailing_newlines="$(normalized "$fixture_dir/trailing_newlines.json")"
+          [[ "$pretty_array" == '[false,true]' && "$pretty_array" == "$compact_array" ]] || {
+            echo "Pretty and compact RPC arrays did not normalize to the same comparable JSON value."
+            exit 1
+          }
+          [[ "$quoted_string" == '"CROC"' ]] || { echo "Quoted RPC string did not normalize to canonical JSON."; exit 1; }
+          [[ "$number" == "5" && "$trailing_newlines" == "$number" ]] || {
+            echo "RPC number or trailing-newline response did not normalize to the same comparable value."
+            exit 1
+          }
+          echo "Canonical view comparison self-test verified pretty/compact arrays, quoted strings, numbers, and trailing newlines."
+
+      - name: Create fresh accounts, atomically deploy and initialize, then smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          export PATH="$CROC_CLI_HOME/bin:$PATH"
+          exec > >(tee -a "$CROC_RUN_DIR/logs/run.log") 2>&1
+          source "$GITHUB_WORKSPACE/scripts/milestone_rpc.sh"
+
+          account_suffix="${CROC_RUN_ID}-${CROC_RUN_ATTEMPT}"
+          contract_id="croc-milestone-${account_suffix}.testnet"
+          declare -a smoke_ids=()
+          declare -a smoke_keys=()
+          : > "$CROC_RUN_DIR/logs/deployment.log"
+
+          create_faucet_account() {
+            local label="$1" account_id="$2" key_dir="$CROC_KEY_DIR/$1"
+            local keygen_log="$CROC_RUN_DIR/logs/${label}-keygen.log"
+            local create_log="$CROC_RUN_DIR/logs/${label}-create.log"
+            mkdir -p "$key_dir"
+            chmod 700 "$key_dir"
+            local exit_code
+            if "$CROC_NEAR_BIN" account create-account fund-later use-auto-generation save-to-folder "$key_dir" >"$keygen_log" 2>&1; then
+              :
+            else
+              exit_code=$?
+              fail_step "$label temporary key generation" "$exit_code"
+            fi
+            local key_file
+            key_file="$(find "$key_dir" -maxdepth 1 -type f -name '*.json' -print -quit)"
+            [[ -n "$key_file" && -f "$key_file" ]] || fail_step "$label key file creation" 1
+            local public_key
+            public_key="$(jq -er '.public_key' "$key_file" 2>/dev/null)" || fail_step "$label public-key read" 5
+            public_key_prefix="ed""25519:"
+            [[ "$public_key" == "$public_key_prefix"* ]] || fail_step "$label public-key format" 1
+            if "$CROC_NEAR_BIN" account create-account sponsor-by-faucet-service "$account_id" use-manually-provided-public-key "$public_key" network-config testnet create >"$create_log" 2>&1; then
+              :
+            else
+              exit_code=$?
+              fail_step "$label faucet-sponsored account creation" "$exit_code"
+            fi
+            echo "$key_file"
+          }
+
+          transaction_id_from_log() {
+            sed -nE 's/.*Transaction ID: ([1-9A-HJ-NP-Za-km-z]{40,50}).*/\1/p' "$1" | tail -n 1
+          }
+
+          sign_and_send() {
+            local label="$1" signer_id="$2" key_file="$3"
+            shift 3
+            local log_file="$CROC_RUN_DIR/logs/${label}.log"
+            local exit_code retry_expired=0
+            while :; do
+              if "$CROC_NEAR_BIN" "$@" sign-as "$signer_id" network-config testnet sign-with-access-key-file "$key_file" send >"$log_file" 2>&1; then
+                break
+              else
+                exit_code=$?
+              fi
+              if (( retry_expired == 0 )) && grep -aFq -- 'Transaction has expired.' "$log_file"; then
+                retry_expired=1
+                continue
+              fi
+              fail_step "$label transaction" "$exit_code"
+            done
+            local tx_hash
+            tx_hash="$(transaction_id_from_log "$log_file")"
+            [[ -n "$tx_hash" ]] || fail_step "$label transaction-id extraction" 1
+            printf '%s' "$tx_hash"
+          }
+
+          checked_jq() {
+            local step_name="$1" json_file="$2" filter="$3" exit_code
+            [[ -s "$json_file" ]] || fail_step "$step_name JSON input" 5
+            if jq -er "$filter" "$json_file" 2>/dev/null; then
+              :
+            else
+              exit_code=$?
+              fail_step "$step_name JSON extraction" "$exit_code"
+            fi
+          }
+
+          view_method() {
+            local account_id="$1" method="$2" args="$3" args_b64 body response_file rpc_response exit_code result
+            args_b64="$(printf '%s' "$args" | base64 -w 0)"
+            body="$(jq -cn --arg account_id "$account_id" --arg method "$method" --arg args "$args_b64" '{jsonrpc:"2.0",id:"croc-milestone-view",method:"query",params:{request_type:"call_function",finality:"final",account_id:$account_id,method_name:$method,args_base64:$args}}')"
+            response_file="$CROC_RUN_DIR/output/rpc-view-${method}.json"
+            rpc_response="$(rpc_post_to_file "view:$method" "$body" "$response_file")"
+            if result="$(printf '%s' "$rpc_response" | normalize_rpc_view_value)"; then
+              # Strip outer quotes from bare decimal strings so U128 values
+              # like "300000000000000000000000000" compare equal to numbers
+              # produced by python3 arithmetic.  Non-numeric strings, arrays
+              # and objects pass through unchanged.
+              if [[ "$result" =~ ^\"[0-9]+\"$ ]]; then
+                result="${result//\"/}"
+              fi
+              printf '%s' "$result"
+            else
+              exit_code=$?
+              fail_step "view:$method JSON extraction" "$exit_code"
+            fi
+          }
+
+          block_timestamp_ns() {
+            local response_file="$CROC_RUN_DIR/output/rpc-block.json" rpc_response exit_code
+            rpc_response="$(rpc_post_to_file "block timestamp" '{"jsonrpc":"2.0","id":"croc-milestone-block","method":"block","params":{"finality":"final"}}' "$response_file")"
+            if printf '%s' "$rpc_response" | jq -cer '.result.header.timestamp_nanosec | tonumber'; then
+              :
+            else
+              exit_code=$?
+              fail_step "block timestamp JSON extraction" "$exit_code"
+            fi
+          }
+
+          tx_status() {
+            local tx_hash="$1" signer_id="$2" response_file="$3" body
+            body="$(jq -cn --arg hash "$tx_hash" --arg signer "$signer_id" '{jsonrpc:"2.0",id:"croc-milestone-tx",method:"EXPERIMENTAL_tx_status",params:[$hash,$signer]}')"
+            rpc_post_to_file "transaction status" "$body" "$response_file" >/dev/null
+          }
+
+          record_receipt_gas() {
+            local label="$1" tx_hash="$2" signer_id="$3" status_file="$CROC_RUN_DIR/output/tx-${1}.json" receipt_file="$CROC_RUN_DIR/output/receipt-${1}.tsv" exit_code
+            tx_status "$tx_hash" "$signer_id" "$status_file"
+            checked_jq "receipt status:$label" "$status_file" '.result.transaction_outcome.outcome.status.SuccessValue != null or .result.transaction_outcome.outcome.status.SuccessReceiptId != null' >/dev/null
+            if python3 -c 'import json,sys; d=json.load(open(sys.argv[1]))["result"]; t=d["transaction_outcome"]["outcome"]; receipts=[r["outcome"] for r in d["receipts_outcome"]]; print(t["gas_burnt"], sum(int(r["gas_burnt"]) for r in receipts), t["tokens_burnt"], sum(int(r["tokens_burnt"]) for r in receipts), sep="\t")' "$status_file" >"$receipt_file" 2>/dev/null; then
+              :
+            else
+              exit_code=$?
+              fail_step "receipt gas:$label" "$exit_code"
+            fi
+            local receipt_values
+            receipt_values="$(cat "$receipt_file")"
+            printf '%s\t%s\t%s\n' "$label" "$tx_hash" "$receipt_values" >> "$CROC_RUN_DIR/output/gas.tsv"
+          }
+
+          contract_key="$(create_faucet_account contract "$contract_id")"
+          wasm_file="$GITHUB_WORKSPACE/target/wasm32-unknown-unknown/release/crying_croc.wasm"
+          [[ -s "$wasm_file" ]] || fail_step "release Wasm file" 1
+          printf 'label\ttx_hash\ttransaction_gas_burnt\treceipt_gas_burnt\ttransaction_tokens_burnt_yoctoNEAR\treceipt_tokens_burnt_yoctoNEAR\n' > "$CROC_RUN_DIR/output/gas.tsv"
+
+          deploy_log="$CROC_RUN_DIR/logs/deploy-init.log"
+          if near contract deploy "$contract_id" use-file "$wasm_file" with-init-call new json-args "{\"day_length_ns\":${CROC_DAY_LENGTH_NS},\"target\":${CROC_TARGET}}" prepaid-gas '100 TGas' attached-deposit '0 NEAR' network-config testnet sign-with-access-key-file "$contract_key" send >"$deploy_log" 2>&1; then
+            :
+          else
+            exit_code=$?
+            fail_step "atomic deploy plus new()" "$exit_code"
+          fi
+          deploy_hash="$(transaction_id_from_log "$deploy_log")"
+          [[ -n "$deploy_hash" ]] || fail_step "atomic deploy transaction-id extraction" 1
+          deploy_status_file="$CROC_RUN_DIR/output/tx-deploy-init.json"
+          tx_status "$deploy_hash" "$contract_id" "$deploy_status_file"
+          checked_jq "atomic deploy action verification" "$deploy_status_file" '.result.transaction.actions | length == 2 and .[0].DeployContract != null and .[1].FunctionCall.method_name == "new"' >/dev/null
+          readback_day_length="$(view_method "$contract_id" day_length_ns '{}')"
+          readback_target="$(view_method "$contract_id" target '{}')"
+          readback_treasury="$(view_method "$contract_id" treasury '{}')"
+          readback_milestones="$(view_method "$contract_id" milestones_paid '{}')"
+          if [[ "$readback_day_length" != "$CROC_DAY_LENGTH_NS" ]]; then
+            printf 'day_length_ns read-back mismatch: expected=%s actual=%s\n' "$CROC_DAY_LENGTH_NS" "$readback_day_length"
+            fail_step "day_length_ns read-back assertion" 1
+          fi
+          if [[ "$readback_target" != "$CROC_TARGET" ]]; then
+            printf 'target read-back mismatch: expected=%s actual=%s\n' "$CROC_TARGET" "$readback_target"
+            fail_step "target read-back assertion" 1
+          fi
+          if [[ "$readback_treasury" != "300000000000000000000000000" ]]; then
+            printf 'treasury read-back mismatch: expected=300000000000000000000000000 actual=%s\n' "$readback_treasury"
+            fail_step "treasury read-back assertion" 1
+          fi
+          if [[ "$readback_milestones" != '[false,false,false,false]' ]]; then
+            printf 'milestones_paid read-back mismatch: expected=[false,false,false,false] actual=%s\n' "$readback_milestones"
+            fail_step "milestones_paid read-back assertion" 1
+          fi
+          record_receipt_gas "atomic_deploy_and_new" "$deploy_hash" "$contract_id"
+          echo "Pre-flight read-backs verified: day_length_ns=$readback_day_length target=$readback_target treasury=$readback_treasury milestones_paid=$readback_milestones"
+          echo "copy=$CROC_COPY day_length_ns=$CROC_DAY_LENGTH_NS target=$CROC_TARGET"
+          echo "contract_account_id=$contract_id"
+          echo "atomic_deploy_and_new_tx=$deploy_hash actions=2"
+
+          for role in checker1 checker2 checker3 checker4 checker5; do
+            smoke_id="croc-${role}-${account_suffix}.testnet"
+            key_file="$(create_faucet_account "$role" "$smoke_id")"
+            smoke_ids+=("$smoke_id")
+            smoke_keys+=("$key_file")
+          done
+
+          view_method "$contract_id" storage_balance_bounds '{}' >/dev/null
+          bounds_file="$CROC_RUN_DIR/output/rpc-view-storage_balance_bounds.json"
+          storage_min="$(checked_jq "view:storage_balance_bounds.min" "$bounds_file" '[.result.result[]] | implode | fromjson | .min')"
+          [[ "$storage_min" =~ ^[0-9]+$ ]] || { echo "storage_balance_bounds().min was not an integer yocto amount."; exit 1; }
+          for i in "${!smoke_ids[@]}"; do
+            user_id="${smoke_ids[$i]}"
+            user_key="${smoke_keys[$i]}"
+            sign_and_send "register-${i}" "$user_id" "$user_key" contract call-function as-transaction "$contract_id" storage_deposit json-args "{\"account_id\":\"$user_id\",\"registration_only\":true}" prepaid-gas '30 TGas' attached-deposit "$storage_min yoctoNEAR" >/dev/null
+          done
+
+          claimer_id="${smoke_ids[0]}"
+          claimer_key="${smoke_keys[0]}"
+          escrow_id="escrow.$contract_id"
+          start_ts="$(block_timestamp_ns)"
+          first_boundary=$(((start_ts / CROC_DAY_LENGTH_NS + 1) * CROC_DAY_LENGTH_NS + 10000000000))
+          wait_ns=$((first_boundary - start_ts))
+          sleep_seconds=$(((wait_ns + 999999999) / 1000000000))
+          (( sleep_seconds > 0 )) && sleep "$sleep_seconds"
+
+          # Registration may span whole days; clear all elapsed days in seven-day batches before starting the streak.
+          settle_backlog() {
+            local now_ts now_day next_day settle_hash label
+            while :; do
+              now_ts="$(block_timestamp_ns)"
+              now_day=$((now_ts / CROC_DAY_LENGTH_NS))
+              next_day="$(view_method "$contract_id" next_day_to_settle '{}')"
+              (( next_day >= now_day )) && break
+              label="precheckin-settle-$next_day"
+              settle_hash="$(sign_and_send "$label" "$contract_id" "$contract_key" contract call-function as-transaction "$contract_id" settle json-args '{}' prepaid-gas '100 TGas' attached-deposit '0 NEAR')"
+              record_receipt_gas "$label" "$settle_hash" "$contract_id"
+            done
+          }
+          settle_backlog
+
+          day7_pool_before=""
+          day7_treasury_before=""
+          day7_escrow_before=""
+          day7_supply_before=""
+          day7_bonus_per=""
+          day7_claim_result=""
+          for streak_day in {1..8}; do
+            settle_backlog
+            checkin_day_ts="$(block_timestamp_ns)"
+            checkin_day=$((checkin_day_ts / CROC_DAY_LENGTH_NS))
+            next_day="$(view_method "$contract_id" next_day_to_settle '{}')"
+            [[ "$checkin_day" == "$next_day" ]] || { echo "Day alignment failed before streak day $streak_day: current day $checkin_day, next settlement $next_day."; exit 1; }
+            for i in "${!smoke_ids[@]}"; do
+              user_id="${smoke_ids[$i]}"
+              tx_hash="$(sign_and_send "check-in-day-${streak_day}-${i}" "$user_id" "${smoke_keys[$i]}" contract call-function as-transaction "$contract_id" check_in json-args '{}' prepaid-gas '30 TGas' attached-deposit '0 NEAR')"
+              record_receipt_gas "check_in_day_${streak_day}_${i}" "$tx_hash" "$user_id"
+            done
+            current_ts="$(block_timestamp_ns)"
+            [[ $((current_ts / CROC_DAY_LENGTH_NS)) -eq "$checkin_day" ]] || { echo "Five check-ins crossed the day boundary on streak day $streak_day; stopping without retry."; exit 1; }
+            checkins="$(view_method "$contract_id" today_checkins '{}')"
+            [[ "$checkins" == "5" ]] || { echo "Streak day $streak_day ($checkin_day): expected five check-ins, read $checkins."; exit 1; }
+            treasury_before="$(view_method "$contract_id" treasury '{}')"
+            pool_before="$(view_method "$contract_id" emission_pool '{}')"
+            escrow_before="$(view_method "$contract_id" ft_balance_of "{\"account_id\":\"$escrow_id\"}")"
+            supply_before="$(view_method "$contract_id" ft_total_supply '{}')"
+            if (( streak_day == 7 )); then
+              day7_pool_before="$pool_before"
+              day7_treasury_before="$treasury_before"
+              day7_escrow_before="$escrow_before"
+              day7_supply_before="$supply_before"
+            fi
+
+            boundary_ts=$(((checkin_day + 1) * CROC_DAY_LENGTH_NS + 10000000000))
+            current_ts="$(block_timestamp_ns)"
+            wait_ns=$((boundary_ts - current_ts))
+            sleep_seconds=$(((wait_ns + 999999999) / 1000000000))
+            (( sleep_seconds > 0 )) && sleep "$sleep_seconds"
+            current_ts="$(block_timestamp_ns)"
+            current_day=$((current_ts / CROC_DAY_LENGTH_NS))
+            [[ "$current_day" -eq $((checkin_day + 1)) ]] || { echo "More than one day elapsed after streak day $streak_day; refusing to count a skipped day as a good day."; exit 1; }
+            settle_hash="$(sign_and_send "settle-day-${streak_day}" "$contract_id" "$contract_key" contract call-function as-transaction "$contract_id" settle json-args '{}' prepaid-gas '100 TGas' attached-deposit '0 NEAR')"
+            record_receipt_gas "settle_day_${streak_day}" "$settle_hash" "$contract_id"
+            day_json="$(view_method "$contract_id" get_day "{\"day\":$checkin_day}")"
+            bonus_per="$(printf '%s' "$day_json" | jq -er '.bonus_per_checker')"
+            if (( streak_day <= 6 || streak_day == 8 )); then
+              [[ "$bonus_per" == "0" ]] || { echo "Unexpected milestone bonus on streak day $streak_day."; exit 1; }
+            fi
+            if (( streak_day == 7 )); then
+              expected_values="$(python3 -c 'import sys; pool, treasury, count = map(int, sys.argv[1:]); pot=pool//200; treasury_mint=pot//10; checker_part=pot*90//100; base=checker_part//count; checker_mint=base*count; bonus_total=(treasury+treasury_mint)*100//10000; bonus_per=bonus_total//count; moved=bonus_per*count; print(treasury_mint,checker_mint,bonus_total,bonus_per,moved,sep="\t")' "$day7_pool_before" "$day7_treasury_before" 5)"
+              IFS=$'\t' read -r day7_treasury_mint day7_checker_mint day7_bonus_total day7_bonus_per day7_bonus_moved <<< "$expected_values"
+              [[ "$bonus_per" == "$day7_bonus_per" ]] || { echo "Day 7 bonus view differs from the floor-based 100 basis-point reference."; exit 1; }
+              day7_treasury_after="$(view_method "$contract_id" treasury '{}')"
+              day7_escrow_after="$(view_method "$contract_id" ft_balance_of "{\"account_id\":\"$escrow_id\"}")"
+              day7_supply_after="$(view_method "$contract_id" ft_total_supply '{}')"
+              expected_treasury_after="$(python3 -c 'import sys; print(int(sys.argv[1])+int(sys.argv[2])-int(sys.argv[3]))' "$day7_treasury_before" "$day7_treasury_mint" "$day7_bonus_moved")"
+              expected_escrow_after="$(python3 -c 'import sys; print(int(sys.argv[1])+int(sys.argv[2])+int(sys.argv[3]))' "$day7_escrow_before" "$day7_checker_mint" "$day7_bonus_moved")"
+              expected_supply_after="$(python3 -c 'import sys; print(int(sys.argv[1])+int(sys.argv[2])+int(sys.argv[3]))' "$day7_supply_before" "$day7_treasury_mint" "$day7_checker_mint")"
+              [[ "$day7_treasury_after" == "$expected_treasury_after" ]] || { echo "Day 7 treasury transfer assertion failed."; exit 1; }
+              [[ "$day7_escrow_after" == "$expected_escrow_after" ]] || { echo "Day 7 escrow transfer assertion failed."; exit 1; }
+              [[ "$day7_supply_after" == "$expected_supply_after" ]] || { echo "Day 7 supply changed by more than the normal daily mint; bonus must be a transfer."; exit 1; }
+              paid_flags="$(view_method "$contract_id" milestones_paid '{}')"
+              [[ "$paid_flags" == '[true,false,false,false]' ]] || { echo "Day 7 milestone paid flags were unexpected."; exit 1; }
+
+              claimer_balance_before="$(view_method "$contract_id" ft_balance_of "{\"account_id\":\"$claimer_id\"}")"
+              claim_escrow_before="$(view_method "$contract_id" ft_balance_of "{\"account_id\":\"$escrow_id\"}")"
+              claim_hash="$(sign_and_send claim-day-7 "$claimer_id" "$claimer_key" contract call-function as-transaction "$contract_id" claim json-args '{}' prepaid-gas '30 TGas' attached-deposit '0 NEAR')"
+              record_receipt_gas claim_day_7 "$claim_hash" "$claimer_id"
+              day7_base_reward="$(python3 -c 'import sys; print(int(sys.argv[1])//5)' "$day7_checker_mint")"
+              day7_claim_result="$(python3 -c 'import sys; print(int(sys.argv[1])+int(sys.argv[2]))' "$day7_base_reward" "$day7_bonus_per")"
+              claimer_balance_after="$(view_method "$contract_id" ft_balance_of "{\"account_id\":\"$claimer_id\"}")"
+              claim_escrow_after="$(view_method "$contract_id" ft_balance_of "{\"account_id\":\"$escrow_id\"}")"
+              claim_result="$day7_claim_result"
+              escrow_before="$claim_escrow_before"
+              escrow_after="$claim_escrow_after"
+              claimer_delta="$(python3 -c 'import sys; print(int(sys.argv[2])-int(sys.argv[1]))' "$claimer_balance_before" "$claimer_balance_after")"
+              claim_escrow_delta="$(python3 -c 'import sys; print(int(sys.argv[1])-int(sys.argv[2]))' "$claim_escrow_before" "$claim_escrow_after")"
+              [[ "$day7_claim_result" == "$claimer_delta" && "$day7_claim_result" == "$claim_escrow_delta" ]] || { echo "Day 7 claim did not move the exact base reward plus milestone bonus from escrow."; exit 1; }
+            fi
+          done
+          [[ "$(view_method "$contract_id" current_streak '{}')" == "8" ]] || { echo "The eight settled check-in days did not produce streak 8."; exit 1; }
+          final_flags="$(view_method "$contract_id" milestones_paid '{}')"
+          [[ "$final_flags" == '[true,false,false,false]' ]] || { echo "The day 7 bonus was paid more than once or another milestone flag changed."; exit 1; }
+
+          today="$(view_method "$contract_id" today_checkins '{}')"
+          streak="$(view_method "$contract_id" current_streak '{}')"
+          longest="$(view_method "$contract_id" longest_streak '{}')"
+          pool="$(view_method "$contract_id" emission_pool '{}')"
+          treasury="$(view_method "$contract_id" treasury '{}')"
+          total_supply="$(view_method "$contract_id" ft_total_supply '{}')"
+          format_units() {
+            python3 -c 'from decimal import Decimal; import sys; value = format(Decimal(sys.argv[1]).scaleb(-int(sys.argv[2])), "f"); value = value.rstrip("0").rstrip(".") if "." in value else value; print(value or "0")' "$1" "$2"
+          }
+          contract_account_body="$(jq -cn --arg account_id "$contract_id" '{jsonrpc:"2.0",id:"croc-milestone-account",method:"query",params:{request_type:"view_account",finality:"final",account_id:$account_id}}')"
+          contract_account_file="$CROC_RUN_DIR/output/rpc-contract-account.json"
+          rpc_post_to_file "contract account balance" "$contract_account_body" "$contract_account_file" >/dev/null
+          contract_native_balance="$(checked_jq "contract account balance" "$contract_account_file" '.result.amount')"
+          printf 'label,tx_hash,transaction_gas_burnt,receipt_gas_burnt,transaction_tokens_burnt_yoctoNEAR,transaction_tokens_burnt_NEAR,receipt_tokens_burnt_yoctoNEAR,receipt_tokens_burnt_NEAR\n' > "$CROC_RUN_DIR/output/gas.csv"
+          while IFS=$'\t' read -r label tx_hash tx_gas receipt_gas tx_tokens receipt_tokens; do
+            [[ "$label" == label ]] && continue
+            printf '%s,%s,%s,%s,%s,%s,%s,%s\n' "$label" "$tx_hash" "$tx_gas" "$receipt_gas" "$tx_tokens" "$(format_units "$tx_tokens" 24)" "$receipt_tokens" "$(format_units "$receipt_tokens" 24)" >> "$CROC_RUN_DIR/output/gas.csv"
+          done < "$CROC_RUN_DIR/output/gas.tsv"
+          cat > "$CROC_RUN_DIR/output/result.json" <<EOF
+          {
+            "source_sha": "$CROC_SOURCE_SHA",
+            "run_id": "$CROC_RUN_ID",
+            "copy": "$CROC_COPY",
+            "contract_account_id": "$contract_id",
+            "day_length_ns": $CROC_DAY_LENGTH_NS,
+            "target": $CROC_TARGET,
+            "deploy_init_transaction_hash": "$deploy_hash",
+            "deploy_init_action_count": 2,
+            "deploy_init_is_single_transaction": true,
+            "claim_transaction_hash": "$claim_hash",
+            "claimer": "$claimer_id",
+            "claim_yoctoCROC": "$claim_result",
+            "claim_croc": "$(format_units "$claim_result" 18)",
+            "streak_days_verified": 8,
+            "day7_bonus_per_checker_yoctoCROC": "$day7_bonus_per",
+            "day7_bonus_total_yoctoCROC": "$day7_bonus_total",
+            "day7_bonus_moved_yoctoCROC": "$day7_bonus_moved",
+            "day7_treasury_before_yoctoCROC": "$day7_treasury_before",
+            "day7_pool_before_yoctoCROC": "$day7_pool_before",
+            "milestones_paid_after_day8": "$final_flags",
+            "storage_deposit_min_yoctoNEAR": "$storage_min",
+            "storage_deposit_min_NEAR": "$(format_units "$storage_min" 24)",
+            "claimer_balance_before_yoctoCROC": "$claimer_balance_before",
+            "claimer_balance_after_yoctoCROC": "$claimer_balance_after",
+            "escrow_balance_before_yoctoCROC": "$escrow_before",
+            "escrow_balance_after_yoctoCROC": "$escrow_after",
+            "today_checkins": "$today",
+            "streak": "$streak",
+            "longest_streak": "$longest",
+            "pool_yoctoCROC": "$pool",
+            "pool_croc": "$(format_units "$pool" 18)",
+            "treasury_yoctoCROC": "$treasury",
+            "treasury_croc": "$(format_units "$treasury" 18)",
+            "total_supply_yoctoCROC": "$total_supply",
+            "total_supply_croc": "$(format_units "$total_supply" 18)",
+            "contract_native_balance_yoctoNEAR": "$contract_native_balance",
+            "contract_native_balance_NEAR": "$(format_units "$contract_native_balance" 24)"
+          }
+          EOF
+          cat > "$CROC_RUN_DIR/output/summary.txt" <<EOF
+          CROC milestone testnet verification: $CROC_SOURCE_SHA / $CROC_RUN_ID
+          Contract: $contract_id
+          Copy: milestone, 5-minute days, target 5
+          Deploy plus new(): one atomic transaction, hash $deploy_hash, exactly two actions
+          Smoke: five registered check-ins, settled streak $streak, claimer received $(format_units "$claim_result" 18) CROC ($claim_result yoctoCROC)
+          Status: today's check-ins $today; streak $streak; longest streak $longest; pool $(format_units "$pool" 18) CROC; treasury $(format_units "$treasury" 18) CROC
+          Contract native balance: $(format_units "$contract_native_balance" 24) NEAR ($contract_native_balance yoctoNEAR)
+          Gas: gas.csv records gas and native fees from finalized transaction and receipt outcomes, in NEAR and yoctoNEAR.
+          EOF
+          echo "Smoke assertions completed; sanitized result files were created."
+          cat "$CROC_RUN_DIR/output/summary.txt"
+          cat "$CROC_RUN_DIR/output/result.json"
+
+      - name: Publish sanitized results to ci-logs only
+        if: success()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          exec > >(tee -a "$CROC_RUN_DIR/logs/run.log") 2>&1
+          destination="testnet/milestone/$CROC_SOURCE_SHA/$CROC_RUN_ID"
+          mkdir -p "ci-logs/$destination"
+          cp "$CROC_RUN_DIR/output/result.json" "$CROC_RUN_DIR/output/gas.csv" "$CROC_RUN_DIR/output/summary.txt" "ci-logs/$destination/"
+
+          git -C ci-logs config user.name "github-actions[bot]"
+          git -C ci-logs config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C ci-logs add "$destination"
+          git -C ci-logs commit -m "Publish milestone testnet results for $CROC_SOURCE_SHA"
+          git -C ci-logs push origin HEAD:ci-logs
+
+      - name: Self-test exact private-key scanner with fake strings
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          fake_key="$(python3 -c 'print("ed25519:" + "1" * 88)')"
+          fake_signature="$(python3 -c 'print("ed25519:" + "2" * 88)')"
+          self_test_dir="$(mktemp -d "$RUNNER_TEMP/croc-scanner-selftest.XXXXXX")"
+          trap 'rm -rf -- "$self_test_dir"' EXIT
+          printf '{"private_key":"%s"}\n' "$fake_key" > "$self_test_dir/fake-credentials.json"
+          chmod 600 "$self_test_dir/fake-credentials.json"
+          jq -er '.private_key' "$self_test_dir/fake-credentials.json" > "$self_test_dir/fake-key-matches.txt"
+          chmod 600 "$self_test_dir/fake-key-matches.txt"
+          printf 'fake log contains %s\n' "$fake_key" > "$self_test_dir/matching-log.txt"
+          printf 'fake log contains signature %s\n' "$fake_signature" > "$self_test_dir/signature-log.txt"
+          if ! grep -aFq -f "$self_test_dir/fake-key-matches.txt" "$self_test_dir/matching-log.txt"; then
+            echo "Exact-key scanner self-test failed: fake credential match was not flagged."
+            exit 1
+          fi
+          if grep -aFq -f "$self_test_dir/fake-key-matches.txt" "$self_test_dir/signature-log.txt"; then
+            echo "Exact-key scanner self-test failed: unrelated signature-shaped fake was flagged."
+            exit 1
+          fi
+          echo "Exact-key scanner self-test checked a fake credential match and an unrelated 88-character fake signature."
+
+      - name: Scan captured logs and report outputs for credential markers
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          scan_root="$RUNNER_TEMP/croc-milestone-run"
+          key_dir="${CROC_KEY_DIR:-$RUNNER_TEMP/croc-milestone-keys}"
+          key_matches_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.txt"
+          key_ready_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.ready"
+          umask 077
+          : > "$key_matches_file"
+          chmod 600 "$key_matches_file"
+          if [[ -d "$key_dir" ]]; then
+            while IFS= read -r -d '' credential_file; do
+              if ! jq -er '.private_key // .secret_key // empty' "$credential_file" >> "$key_matches_file" 2>/dev/null; then
+                echo "Credential key extraction failed (exit code 1)."
+                exit 1
+              fi
+            done < <(find "$key_dir" -type f -name '*.json' -print0 2>/dev/null)
+          fi
+          : > "$key_ready_file"
+          chmod 600 "$key_ready_file"
+          if [[ ! -d "$scan_root/logs" || ! -d "$scan_root/output" ]]; then
+            echo "Credential marker scan failed (exit code 1): captured log and report directories are missing."
+            exit 1
+          fi
+          scan_failed=0
+          while IFS= read -r -d '' file; do
+            if [[ -s "$key_matches_file" ]] && grep -aFq -f "$key_matches_file" "$file"; then
+              printf 'Credential marker detected: file=%s marker=private-key-value\n' "$file"
+              scan_failed=1
+            fi
+            for marker_name in private_key secret_key seed_phrase; do
+              if grep -aiFq -- "$marker_name" "$file"; then
+                printf 'Credential marker detected: file=%s marker=%s\n' "$file" "$marker_name"
+                scan_failed=1
+              fi
+            done
+          done < <(find "$scan_root/logs" "$scan_root/output" -type f -print0 2>/dev/null)
+          if (( scan_failed != 0 )); then
+            echo "Credential marker scan failed (exit code 1)."
+            exit 1
+          fi
+          echo "Credential marker scan found no markers in captured logs or report outputs."
+
+      - name: Publish sanitized per-file log tails to ci-logs
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          run_dir="$RUNNER_TEMP/croc-milestone-run"
+          sanitized_dir="$RUNNER_TEMP/croc-milestone-sanitized"
+          key_matches_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.txt"
+          key_ready_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.ready"
+          destination="testnet/milestone/$GITHUB_SHA/$GITHUB_RUN_ID/logs"
+          mkdir -p "$sanitized_dir"
+          if [[ -f "$key_ready_file" && -f "$key_matches_file" && ( -d "$run_dir/logs" || -d "$run_dir/output" ) ]]; then
+            while IFS= read -r -d '' file; do
+              safe_name="$(basename "$file").tail.txt"
+              {
+                if [[ -s "$key_matches_file" ]]; then
+                  grep -aFv -f "$key_matches_file" "$file" 2>/dev/null || true
+                else
+                  cat "$file"
+                fi
+              } | { grep -aEiv -- 'private_key|secret_key|seed_phrase' || true; } | tail -n 80 >"$sanitized_dir/$safe_name"
+              if [[ ! -e "$sanitized_dir/$safe_name" ]]; then
+                echo "Sanitized log creation failed (exit code 1)."
+                exit 1
+              fi
+            done < <(find "$run_dir/logs" "$run_dir/output" -type f -print0 2>/dev/null || true)
+          else
+            printf 'No captured step logs or reports were created.\n' > "$sanitized_dir/no-captured-output.txt"
+          fi
+          if [[ ! -d ci-logs/.git ]]; then
+            echo "Sanitized log publication failed (exit code 1): ci-logs checkout is missing."
+            exit 1
+          fi
+          mkdir -p "ci-logs/$destination"
+          shopt -s nullglob
+          sanitized_files=("$sanitized_dir"/*)
+          if (( ${#sanitized_files[@]} == 0 )); then
+            printf 'No captured step logs or reports were created.\n' > "$sanitized_dir/no-captured-output.txt"
+            sanitized_files=("$sanitized_dir"/*)
+          fi
+          cp "${sanitized_files[@]}" "ci-logs/$destination/"
+          git -C ci-logs config user.name "github-actions[bot]"
+          git -C ci-logs config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C ci-logs add "$destination"
+          if git -C ci-logs diff --cached --quiet; then
+            echo "No new sanitized step tails needed publishing."
+          else
+            git -C ci-logs commit -m "Publish sanitized milestone run tails for $GITHUB_SHA"
+            git -C ci-logs push origin HEAD:ci-logs
+            echo "Sanitized step tails published to ci-logs."
+          fi
+
+      - name: Wipe runner credentials and verify removal
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          key_dir="${CROC_KEY_DIR:-$RUNNER_TEMP/croc-milestone-keys}"
+          cli_home="${CROC_CLI_HOME:-$RUNNER_TEMP/croc-milestone-cli-home}"
+          key_matches_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.txt"
+          key_ready_file="$RUNNER_TEMP/croc-private-key-matches-$GITHUB_RUN_ID.ready"
+          rm -rf -- "$key_dir" "$cli_home"
+          rm -f -- "$key_matches_file" "$key_ready_file"
+          if [[ -e "$key_dir" || -e "$cli_home" ]]; then
+            echo "Credential cleanup failed (exit code 1)."
+            exit 1
+          fi
+          echo "Credential directories wiped and verified absent."

@@ -1,0 +1,71 @@
+name: Milestone branch simulation
+
+on:
+  push:
+    branches:
+      - milestone
+
+permissions:
+  contents: write
+
+jobs:
+  simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the milestone commit
+        uses: actions/checkout@v4
+
+      - name: Run simulations and verify the replay reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_dir="$RUNNER_TEMP/croc-milestone-simulation"
+          python3 scripts/simulate_60_days.py --output-dir "$output_dir"
+          python3 scripts/simulate_adaptive_target.py --output-dir "$output_dir/adaptive_target"
+          sed 's/\r$//' docs/simulation/replay_reference_milestones.csv > "$RUNNER_TEMP/replay-reference-expected.csv"
+          sed 's/\r$//' "$output_dir/replay_reference.csv" > "$RUNNER_TEMP/replay-reference-actual.csv"
+          diff -u "$RUNNER_TEMP/replay-reference-expected.csv" "$RUNNER_TEMP/replay-reference-actual.csv"
+
+      - name: Save simulation CSVs and charts
+        uses: actions/upload-artifact@v4
+        with:
+          name: milestone-simulation-${{ github.sha }}
+          path: ${{ runner.temp }}/croc-milestone-simulation/
+          if-no-files-found: error
+
+      - name: Check out the ci-logs branch
+        uses: actions/checkout@v4
+        with:
+          ref: ci-logs
+          path: ci-logs
+
+      - name: Publish summaries, CSVs and charts to ci-logs
+        shell: bash
+        env:
+          SIMULATION_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          destination="ci-logs/$SIMULATION_SHA/simulation"
+          mkdir -p "$destination"
+          cp -R "$RUNNER_TEMP/croc-milestone-simulation/." "$destination/"
+          git -C ci-logs config user.name "github-actions[bot]"
+          git -C ci-logs config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C ci-logs add "$SIMULATION_SHA/simulation"
+          if git -C ci-logs diff --cached --quiet; then
+            echo "Simulation output for $SIMULATION_SHA already exists."
+          else
+            git -C ci-logs commit -m "Add milestone simulation for $SIMULATION_SHA"
+            pushed=false
+            for attempt in 1 2 3; do
+              if git -C ci-logs push origin HEAD:ci-logs; then
+                pushed=true
+                break
+              fi
+              if (( attempt < 3 )); then
+                git -C ci-logs fetch origin ci-logs
+                git -C ci-logs rebase origin/ci-logs
+                sleep "$((attempt * 2))"
+              fi
+            done
+            [[ "$pushed" == true ]] || { echo "Could not publish simulation output after 3 push attempts."; exit 1; }
+          fi
