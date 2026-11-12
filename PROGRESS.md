@@ -2,6 +2,12 @@
 
 Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit tests run in GitHub Actions.
 
+## Current milestone branch status (2026-11-12)
+
+- Branch `milestone` is at `deb235b408b52db7a643cd081b99319359014afa`; its matching `ci-latest.txt` reports 41 unit tests passed and the Wasm build succeeded. The matching main CI and actionlint run is `43079336993`; the milestone simulation run is `43079336631`; the milestone testnet run is `43080463005` (Actions API outcomes verified).
+- Branch `main` is at `ab3c12db1e5c97934e09828c57bff333a04b97ca`; its test workflow `42973475684` and actionlint step succeeded, but `ci-logs/ci-latest.txt` does not match this SHA, so its test count is unverified from ci-logs. Its simulation workflow run `43079599334` was skipped.
+- Simulation publication under `<sha>/simulation/` and canonical RPC view-comparison self-tests are in progress on the milestone branch. Adaptive simulation values will be compared against `docs/simulation/adaptive_target.md` only after the workflow publishes its files to ci-logs.
+
 ## Done
 
 - Phase 1 items 1.1–1.5: metadata name and test; four read-only contract views and five tests; current-brand references in documentation; manual-only testnet playground workflow; keeper target configuration file.

@@ -235,14 +235,33 @@ def main():
         writer.writeheader()
         writer.writerows(challenges)
     write_chart(args.output_dir / "adaptive_target.svg", all_rows)
-    print("\nAdaptive target summary (60 days)")
-    print("| Scenario | Wallets | Rule | Missed days | Treasury burned (CROC) | Days to recover |")
-    print("|---|---:|:---:|---:|---:|---:|")
+    summary_lines = [
+        "Adaptive target summary (60 days)",
+        "| Scenario | Wallets | Rule | Missed days | Treasury burned (CROC) | Days to recover |",
+        "|---|---:|:---:|---:|---:|---:|",
+    ]
     for summary in summaries:
-        print(
+        summary_lines.append(
             "| {scenario} | {crowd_wallets} | {policy} | {missed_days} | "
             "{treasury_burned_croc} | {days_to_recover_after_first_miss} |".format(**summary)
         )
+    challenge_lines = [
+        "Weekly challenge illustration",
+        "| Eligible bot wallets | Total eligible wallets | Bot share of eligible wallets | Amount captured by bots (CROC) | Share of weekly pool captured |",
+        "|---:|---:|---:|---:|---:|",
+    ]
+    for challenge in challenges:
+        challenge_lines.append(
+            "| {bot_wallets} | {eligible_humans_plus_bots} | {bot_share_percent} | "
+            "{bot_capture_croc} | {bot_share_percent} |".format(
+                eligible_humans_plus_bots=challenge["eligible_humans"] + challenge["bot_wallets"],
+                **challenge,
+            )
+        )
+    summary_path_md = args.output_dir / "adaptive_target_summary.md"
+    summary_path_md.write_text("\n".join(summary_lines + [""] + challenge_lines) + "\n", encoding="utf-8")
+    print("\n" + "\n".join(summary_lines))
+    print("\n" + "\n".join(challenge_lines))
     print(f"wrote {len(all_rows)} daily rows to {daily_path}")
     print(f"wrote {len(summaries)} policy summaries to {summary_path}")
     print(f"wrote weekly challenge cases to {challenge_path}")

@@ -159,6 +159,51 @@ jobs:
           }
           echo "RPC stdout self-test verified captured output contains only the fake response body."
 
+      - name: Self-test canonical milestone view comparisons
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          exec > >(tee -a "$CROC_RUN_DIR/logs/view-comparison-self-test.log") 2>&1
+          source "$GITHUB_WORKSPACE/scripts/milestone_rpc.sh"
+          fixture_dir="$CROC_RUN_DIR/output/view-comparison-fixtures"
+          mkdir -p "$fixture_dir"
+          python3 - "$fixture_dir" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          destination = pathlib.Path(sys.argv[1])
+          payloads = {
+              "array_pretty": "[\n  false,\n  true\n]",
+              "array_compact": "[false,true]",
+              "quoted_string": '"CROC"',
+              "number": "5",
+              "trailing_newlines": "5\n\n\n",
+          }
+          for name, serialized_value in payloads.items():
+              response = {"jsonrpc": "2.0", "result": {"result": list(serialized_value.encode("utf-8"))}}
+              (destination / f"{name}.json").write_text(json.dumps(response), encoding="utf-8")
+          PY
+          normalized() {
+            normalize_rpc_view_value < "$1"
+          }
+          pretty_array="$(normalized "$fixture_dir/array_pretty.json")"
+          compact_array="$(normalized "$fixture_dir/array_compact.json")"
+          quoted_string="$(normalized "$fixture_dir/quoted_string.json")"
+          number="$(normalized "$fixture_dir/number.json")"
+          trailing_newlines="$(normalized "$fixture_dir/trailing_newlines.json")"
+          [[ "$pretty_array" == '[false,true]' && "$pretty_array" == "$compact_array" ]] || {
+            echo "Pretty and compact RPC arrays did not normalize to the same comparable JSON value."
+            exit 1
+          }
+          [[ "$quoted_string" == '"CROC"' ]] || { echo "Quoted RPC string did not normalize to canonical JSON."; exit 1; }
+          [[ "$number" == "5" && "$trailing_newlines" == "$number" ]] || {
+            echo "RPC number or trailing-newline response did not normalize to the same comparable value."
+            exit 1
+          }
+          echo "Canonical view comparison self-test verified pretty/compact arrays, quoted strings, numbers, and trailing newlines."
+
       - name: Create fresh accounts, atomically deploy and initialize, then smoke test
         shell: bash
         run: |
@@ -248,7 +293,7 @@ jobs:
             body="$(jq -cn --arg account_id "$account_id" --arg method "$method" --arg args "$args_b64" '{jsonrpc:"2.0",id:"croc-milestone-view",method:"query",params:{request_type:"call_function",finality:"final",account_id:$account_id,method_name:$method,args_base64:$args}}')"
             response_file="$CROC_RUN_DIR/output/rpc-view-${method}.json"
             rpc_response="$(rpc_post_to_file "view:$method" "$body" "$response_file")"
-            if printf '%s' "$rpc_response" | jq -cer '[.result.result[]] | implode | fromjson'; then
+            if printf '%s' "$rpc_response" | normalize_rpc_view_value; then
               :
             else
               exit_code=$?

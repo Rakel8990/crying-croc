@@ -22,25 +22,40 @@ jobs:
           path: source
       - name: Run 60-day simulations and create PNG charts
         working-directory: source
-        run: python3 scripts/simulate_60_days.py --output-dir "$RUNNER_TEMP/croc-simulation"
+        run: |
+          set -euo pipefail
+          python3 scripts/simulate_60_days.py --output-dir "$RUNNER_TEMP/croc-simulation"
+          python3 scripts/simulate_adaptive_target.py --output-dir "$RUNNER_TEMP/croc-simulation/adaptive_target"
       - name: Check out the ci-logs branch
         uses: actions/checkout@v4
         with:
           ref: ci-logs
           path: ci-logs
-      - name: Publish CSV and PNG results to ci-logs
+      - name: Publish summaries, CSVs and charts to ci-logs
         shell: bash
         run: |
           set -euo pipefail
-          destination="ci-logs/simulations/$SIMULATION_SHA"
+          destination="ci-logs/$SIMULATION_SHA/simulation"
           mkdir -p "$destination"
-          cp "$RUNNER_TEMP/croc-simulation/"* "$destination/"
+          cp -R "$RUNNER_TEMP/croc-simulation/." "$destination/"
           git -C ci-logs config user.name "github-actions[bot]"
           git -C ci-logs config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git -C ci-logs add "simulations/$SIMULATION_SHA"
+          git -C ci-logs add "$SIMULATION_SHA/simulation"
           if git -C ci-logs diff --cached --quiet; then
             echo "Simulation output for $SIMULATION_SHA already exists."
           else
             git -C ci-logs commit -m "Add 60-day simulation for $SIMULATION_SHA"
-            git -C ci-logs push origin HEAD:ci-logs
+            pushed=false
+            for attempt in 1 2 3; do
+              if git -C ci-logs push origin HEAD:ci-logs; then
+                pushed=true
+                break
+              fi
+              if (( attempt < 3 )); then
+                git -C ci-logs fetch origin ci-logs
+                git -C ci-logs rebase origin/ci-logs
+                sleep "$((attempt * 2))"
+              fi
+            done
+            [[ "$pushed" == true ]] || { echo "Could not publish simulation output after 3 push attempts."; exit 1; }
           fi

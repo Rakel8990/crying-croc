@@ -42,3 +42,10 @@ rpc_post_to_file() {
   jq -e . "$response_file" >/dev/null 2>&1 || fail_step "$step_name RPC JSON validation" 5
   cat "$response_file"
 }
+
+normalize_rpc_view_value() {
+  # NEAR returns the contract JSON value as a byte array. Emit canonical compact
+  # JSON so arrays, strings and numbers compare consistently regardless of RPC
+  # whitespace or jq's pretty-printing defaults.
+  jq -cS '[.result.result[]] | implode | fromjson'
+}
