@@ -1,8 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import { ArrowDown, ArrowUpRight } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
-import { ArrowDown, ArrowLeft, ArrowUpRight } from "lucide-react"
 
 const chapters = [
   {
@@ -20,8 +20,8 @@ const chapters = [
   {
     number: "03",
     title: "NOBODY WINS ALONE.",
-    copy: "Hit the daily target. Create new CROC. Share 90% among the day's checkers.",
-    tag: "90% TO THE DAY'S CHECKERS",
+    copy: "Hit the daily target. Create new CROC. Share 90% among the day’s checkers.",
+    tag: "90% TO THE DAY’S CHECKERS",
   },
   {
     number: "04",
@@ -32,7 +32,7 @@ const chapters = [
   {
     number: "05",
     title: "NOBODY HOLDS THE KEYS.",
-    copy: "No admin. No changing the rules. What's written in the contract stays.",
+    copy: "No admin. No changing the rules. What’s written in the contract stays.",
     tag: "RULES SET IN THE CONTRACT",
   },
   {
@@ -44,100 +44,107 @@ const chapters = [
   {
     number: "07",
     title: "THE TEARS ARE FAKE. THE BURN IS REAL.",
-    copy: "A crocodile with a reason to cry. A community with a reason to show up. That's Crycodile.",
+    copy: "A crocodile with a reason to cry. A community with a reason to show up. That’s Crycodile.",
     tag: "$CROC ON NEAR",
   },
 ]
 
 export function StoryExperience() {
-  const scrollerRef = useRef<HTMLDivElement>(null)
+  const storyRef = useRef<HTMLElement>(null)
   const [activeChapter, setActiveChapter] = useState(0)
 
   useEffect(() => {
-    const scroller = scrollerRef.current
-    if (!scroller) return
+    const story = storyRef.current
+    if (!story) return
 
-    const sections = Array.from(scroller.querySelectorAll<HTMLElement>("[data-chapter]"))
+    const sections = Array.from(story.querySelectorAll<HTMLElement>("[data-story-chapter]"))
+    story.classList.add("has-observer")
+
     const observer = new IntersectionObserver(
       (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue
-          const index = Number((entry.target as HTMLElement).dataset.chapter)
-          setActiveChapter(index)
-          entry.target.querySelector(".story-copy")?.classList.add("is-active")
-        }
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((first, second) => second.intersectionRatio - first.intersectionRatio)[0]
+
+        if (!visible) return
+
+        const section = visible.target as HTMLElement
+        const index = Number(section.dataset.storyChapter)
+        setActiveChapter(index)
+        section.querySelector(".home-story-copy")?.classList.add("is-visible")
       },
-      { root: scroller, threshold: 0.62 },
+      { threshold: [0.25, 0.45, 0.65], rootMargin: "-12% 0px -18% 0px" },
     )
 
     sections.forEach((section) => observer.observe(section))
     return () => observer.disconnect()
   }, [])
 
-  return (
-    <main className="story-page">
-      <video className="background-video story-video" src="https://files.catbox.moe/2pu9xu.mp4" autoPlay muted loop playsInline preload="auto" aria-hidden="true" />
-      <div className="story-video-shade" aria-hidden="true" />
-      <div className="story-grain" aria-hidden="true" />
+  const currentChapter = chapters[activeChapter]
 
-      <header className="story-topbar">
-        <Link className="story-back" href="/"><ArrowLeft aria-hidden="true" /> <span>BACK TO $CROC</span></Link>
-        <span className="story-label"><span className="live-dot" /> THE CRYCODILE STORY</span>
-        <span className="story-count">{String(activeChapter + 1).padStart(2, "0")} <i>/</i> 07</span>
+  return (
+    <section className="home-story" id="story" ref={storyRef} aria-labelledby="story-heading">
+      <header className="home-story-intro">
+        <div>
+          <span className="section-kicker">THE CRYCODILE STORY</span>
+          <h2 id="story-heading">A community built<br /><span>on showing up.</span></h2>
+        </div>
+        <p>One daily check-in. One shared goal. A different ending each day.</p>
       </header>
 
-      <nav className="story-progress" aria-label="Story chapters">
-        {chapters.map((chapter, index) => (
-          <a
-            key={chapter.number}
-            href={`#chapter-${chapter.number}`}
-            aria-label={`Chapter ${chapter.number}: ${chapter.tag}`}
-            aria-current={activeChapter === index ? "step" : undefined}
-            className={activeChapter === index ? "is-active" : undefined}
-            onClick={(event) => {
-              event.preventDefault()
-              scrollerRef.current?.querySelector(`#chapter-${chapter.number}`)?.scrollIntoView({ behavior: "smooth" })
-            }}
-          >
-            <span>{chapter.number}</span>
-          </a>
-        ))}
-      </nav>
-
-      <div className="story-scroll" ref={scrollerRef}>
-        {chapters.map((chapter, index) => (
-          <section className="story-chapter" id={`chapter-${chapter.number}`} data-chapter={index} key={chapter.number} aria-labelledby={`story-title-${chapter.number}`}>
-            <div className="story-chapter-inner">
-              <div className="story-chapter-meta"><span>CHAPTER {chapter.number}</span><span>{chapter.tag}</span></div>
-              <div className="story-copy">
-                <span className="story-index">{chapter.number}</span>
-                {index === 0 ? (
-                  <h1 id={`story-title-${chapter.number}`} data-glitch={chapter.title}>{chapter.title}</h1>
-                ) : (
-                  <h2 id={`story-title-${chapter.number}`} data-glitch={chapter.title}>{chapter.title}</h2>
-                )}
-                <p>{chapter.copy}</p>
-              </div>
-              <div className="story-chapter-bottom">
-                <span className="story-coordinate">CROC / NEAR / {chapter.number}</span>
-                {index < chapters.length - 1 ? (
-                  <a className="story-next" href={`#chapter-${chapters[index + 1].number}`} onClick={(event) => {
-                    event.preventDefault()
-                    scrollerRef.current?.querySelector(`#chapter-${chapters[index + 1].number}`)?.scrollIntoView({ behavior: "smooth" })
-                  }}>
-                    <span>KEEP GOING</span><ArrowDown aria-hidden="true" />
-                  </a>
-                ) : (
-                  <Link className="story-next" href="/mechanic"><span>THE MECHANIC</span><ArrowUpRight aria-hidden="true" /></Link>
-                )}
-              </div>
-            </div>
-            <span className="story-watermark" aria-hidden="true">CROC</span>
-          </section>
-        ))}
+      <div className="home-story-progress">
+        <span className="home-story-progress-label">CHAPTER {currentChapter.number} / 07</span>
+        <div
+          className="home-story-progress-track"
+          role="progressbar"
+          aria-label="Story progress"
+          aria-valuemin={1}
+          aria-valuemax={chapters.length}
+          aria-valuenow={activeChapter + 1}
+          aria-valuetext={`Chapter ${currentChapter.number}: ${currentChapter.tag}`}
+        >
+          <span style={{ width: `${((activeChapter + 1) / chapters.length) * 100}%` }} />
+        </div>
+        <span className="home-story-progress-tag">{currentChapter.tag}</span>
       </div>
 
-      <Link className="story-mechanic-link" href="/mechanic">THE MECHANIC <ArrowUpRight aria-hidden="true" /></Link>
-    </main>
+      <div className="home-story-chapters">
+        {chapters.map((chapter, index) => {
+          const nextChapter = chapters[index + 1]
+
+          return (
+            <article
+              className="home-story-chapter"
+              id={`story-chapter-${chapter.number}`}
+              data-story-chapter={index}
+              key={chapter.number}
+              aria-labelledby={`story-heading-${chapter.number}`}
+            >
+              <div className="home-story-index" aria-hidden="true">
+                <span>{chapter.number}</span>
+                <small> / 07</small>
+              </div>
+              <div className="home-story-copy">
+                <span className="home-story-tag">{chapter.tag}</span>
+                <h3 id={`story-heading-${chapter.number}`} data-glitch={chapter.title}>{chapter.title}</h3>
+                <p>{chapter.copy}</p>
+                <div className="home-story-footer">
+                  <span>CROC / NEAR / {chapter.number}</span>
+                  {nextChapter ? (
+                    <a className="home-story-next" href={`#story-chapter-${nextChapter.number}`}>
+                      NEXT CHAPTER <ArrowDown aria-hidden="true" />
+                    </a>
+                  ) : (
+                    <Link className="home-story-next" href="/mechanic">
+                      THE MECHANIC <ArrowUpRight aria-hidden="true" />
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </article>
+          )
+        })}
+      </div>
+    </section>
   )
 }
