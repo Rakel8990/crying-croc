@@ -113,7 +113,7 @@ export function StoryExperience() {
             key={chapter.number}
             aria-labelledby={`story-heading-${chapter.number}`}
             aria-current={activeChapter === index ? "step" : undefined}
-            style={{ top: `${112 + index * 11}px`, zIndex: index + 2 }}
+            style={{ zIndex: index + 2 }}
           >
             <div className="home-story-index" aria-hidden="true">
               <span>{chapter.number}</span>
