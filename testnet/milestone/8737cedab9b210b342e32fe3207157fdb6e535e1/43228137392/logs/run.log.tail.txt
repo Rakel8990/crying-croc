@@ -1,0 +1,8 @@
+near-cli-rs method=cached-binary version=0.31.1
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+RPC attempt=1 status=200
+treasury read-back mismatch: expected=300000000000000000000000000 actual="300000000000000000000000000"
+treasury read-back assertion failed (exit code 1).

@@ -1,0 +1,1 @@
+label	tx_hash	transaction_gas_burnt	receipt_gas_burnt	transaction_tokens_burnt_yoctoNEAR	receipt_tokens_burnt_yoctoNEAR

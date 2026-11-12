@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","result":{"block_hash":"Gr12SCFnikKn1A9tGNpaaJGAgKueBr5cbF4uEpN7DBmN","block_height":277369453,"logs":[],"result":[34,51,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,48,34]},"id":"croc-milestone-view"}
