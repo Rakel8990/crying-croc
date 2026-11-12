@@ -1,5 +1,5 @@
-Commit SHA: fd780a171170e38d0064eed5d08f60cd6770311a
-UTC time: 2026-11-12 15:40:44 UTC
+Commit SHA: f8cc3cf87b4ce95eaf02ce264121f1f0d9698d1e
+UTC time: 2026-11-12 16:41:59 UTC
 Final conclusion: SUCCESS (unit tests: 0, cargo build: 0)
 Last 300 lines of Cargo output:
 [1m[92m    Updating[0m crates.io index
@@ -40,26 +40,24 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m zstd-sys v2.1.3+zstd.1.5.7
 [1m[92m   Compiling[0m zstd-safe v7.4.1
 [1m[92m   Compiling[0m http-body v1.1.0
-[1m[92m   Compiling[0m rustls-webpki v0.103.13
-[1m[92m   Compiling[0m crc32fast v1.5.5
-[1m[92m   Compiling[0m rustls v0.23.43
 [1m[92m   Compiling[0m synstructure v0.14.0
+[1m[92m   Compiling[0m rustls-webpki v0.103.13
 [1m[92m   Compiling[0m serde_derive v1.0.229
 [1m[92m   Compiling[0m borsh-derive v1.8.1
-[1m[92m   Compiling[0m borsh v1.8.1
 [1m[92m   Compiling[0m thiserror-impl v2.0.21
-[1m[92m   Compiling[0m serde v1.0.229
-[1m[92m   Compiling[0m lock_api v0.4.14
-[1m[92m   Compiling[0m parking_lot v0.12.5
-[1m[92m   Compiling[0m thiserror v2.0.21
 [1m[92m   Compiling[0m zerofrom-derive v0.1.8
-[1m[92m   Compiling[0m yoke-derive v0.8.4
-[1m[92m   Compiling[0m schemars v0.8.22
 [1m[92m   Compiling[0m zerofrom v0.1.8
-[1m[92m   Compiling[0m yoke v0.8.4
+[1m[92m   Compiling[0m borsh v1.8.1
+[1m[92m   Compiling[0m thiserror v2.0.21
+[1m[92m   Compiling[0m yoke-derive v0.8.4
 [1m[92m   Compiling[0m zerovec-derive v0.11.7
+[1m[92m   Compiling[0m serde v1.0.229
 [1m[92m   Compiling[0m derive_arbitrary v1.5.0
+[1m[92m   Compiling[0m yoke v0.8.4
+[1m[92m   Compiling[0m lock_api v0.4.14
+[1m[92m   Compiling[0m schemars v0.8.22
 [1m[92m   Compiling[0m zerovec v0.11.9
+[1m[92m   Compiling[0m parking_lot v0.12.5
 [1m[92m   Compiling[0m arbitrary v1.5.0
 [1m[92m   Compiling[0m num-rational v0.3.2
 [1m[92m   Compiling[0m serde_repr v0.1.21
@@ -72,62 +70,61 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m icu_locale_core v2.4.0
 [1m[92m   Compiling[0m zerotrie v0.2.5
 [1m[92m   Compiling[0m potential_utf v0.1.6
-[1m[92m   Compiling[0m near-token v0.3.6
 [1m[92m   Compiling[0m serde_yaml v0.9.34+deprecated
+[1m[92m   Compiling[0m near-token v0.3.6
 [1m[92m   Compiling[0m icu_collections v2.4.0
 [1m[92m   Compiling[0m icu_provider v2.4.0
 [1m[92m   Compiling[0m near-gas v0.3.7
 [1m[92m   Compiling[0m near-account-id v2.6.0
 [1m[92m   Compiling[0m bytesize v1.3.3
-[1m[92m   Compiling[0m zstd v0.13.5
-[1m[92m   Compiling[0m icu_normalizer v2.4.0
 [1m[92m   Compiling[0m icu_properties v2.4.0
-[1m[92m   Compiling[0m chrono v0.4.45
-[1m[92m   Compiling[0m near-account-id v1.1.4
+[1m[92m   Compiling[0m icu_normalizer v2.4.0
 [1m[92m   Compiling[0m ordered-float v4.6.0
+[1m[92m   Compiling[0m near-account-id v1.1.4
+[1m[92m   Compiling[0m chrono v0.4.45
+[1m[92m   Compiling[0m crc32fast v1.5.5
 [1m[92m   Compiling[0m hyper v1.12.0
 [1m[92m   Compiling[0m idna_adapter v1.2.2
 [1m[92m   Compiling[0m near-primitives-core v0.37.4
 [1m[92m   Compiling[0m near_schemafy_core v0.7.0
+[1m[92m   Compiling[0m rustls v0.23.43
 [1m[92m   Compiling[0m hyper-util v0.1.21
 [1m[92m   Compiling[0m idna v1.1.0
 [1m[92m   Compiling[0m near-primitives-core v0.31.1
-[1m[92m   Compiling[0m near-config-utils v0.37.4
 [1m[92m   Compiling[0m jsonptr v0.7.1
-[1m[92m   Compiling[0m ureq-proto v0.6.5
-[1m[92m   Compiling[0m json-patch v4.2.0
+[1m[92m   Compiling[0m near-config-utils v0.37.4
 [1m[92m   Compiling[0m near-crypto v0.37.4
+[1m[92m   Compiling[0m ureq-proto v0.6.5
 [1m[92m   Compiling[0m tower v0.5.3
+[1m[92m   Compiling[0m json-patch v4.2.0
+[1m[92m   Compiling[0m flate2 v1.1.11
 [1m[92m   Compiling[0m url v2.5.8
 [1m[92m   Compiling[0m near-fmt v0.37.4
 [1m[92m   Compiling[0m near-parameters v0.37.4
-[1m[92m   Compiling[0m near-config-utils v0.31.1
 [1m[92m   Compiling[0m near-time v0.37.4
-[1m[92m   Compiling[0m flate2 v1.1.11
+[1m[92m   Compiling[0m near-config-utils v0.31.1
 [1m[92m   Compiling[0m webpki-roots v1.0.12
 [1m[92m   Compiling[0m http-body-util v0.1.5
 [1m[92m   Compiling[0m near-crypto v0.31.1
-[1m[92m   Compiling[0m near_schemafy_lib v0.7.0
 [1m[92m   Compiling[0m ureq v3.4.2
-[1m[92m   Compiling[0m near-primitives v0.37.4
-[1m[92m   Compiling[0m near-abi v0.4.5
+[1m[92m   Compiling[0m near_schemafy_lib v0.7.0
 [1m[92m   Compiling[0m tokio-native-tls v0.3.1
+[1m[92m   Compiling[0m near-abi v0.4.5
 [1m[92m   Compiling[0m tower-http v0.6.11
 [1m[92m   Compiling[0m near-parameters v0.31.1
-[1m[92m   Compiling[0m hyper-tls v0.6.0
 [1m[92m   Compiling[0m near-abi-client-impl v0.1.1
-[1m[92m   Compiling[0m near-fmt v0.31.1
+[1m[92m   Compiling[0m hyper-tls v0.6.0
 [1m[92m   Compiling[0m tokio-rustls v0.26.6
-[1m[92m   Compiling[0m near-time v0.31.1
-[1m[92m   Compiling[0m near-sandbox v0.3.16
+[1m[92m   Compiling[0m near-fmt v0.31.1
 [1m[92m   Compiling[0m serde_urlencoded v0.7.1
+[1m[92m   Compiling[0m near-sandbox v0.3.16
+[1m[92m   Compiling[0m near-time v0.31.1
 [1m[92m   Compiling[0m rustls-native-certs v0.8.5
 [1m[92m   Compiling[0m near-sdk-macros v5.17.2
 [1m[92m   Compiling[0m near-vm-runner v0.31.1
 [1m[92m   Compiling[0m rustls-platform-verifier v0.7.1
-[1m[92m   Compiling[0m near-primitives v0.31.1
-[1m[92m   Compiling[0m reqwest v0.12.28
 [1m[92m   Compiling[0m near-workspaces v0.23.0
+[1m[92m   Compiling[0m reqwest v0.12.28
 [1m[92m   Compiling[0m hyper-rustls v0.27.10
 [1m[92m   Compiling[0m near-abi-client-macros v0.1.1
 [1m[92m   Compiling[0m jsonptr v0.4.7
@@ -135,20 +132,23 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m json-patch v2.0.0
 [1m[92m   Compiling[0m tokio-retry v0.3.2
 [1m[92m   Compiling[0m reqwest v0.13.5
-[1m[92m   Compiling[0m near-chain-configs v0.37.4
-[1m[92m   Compiling[0m near-jsonrpc-primitives v0.37.4
+[1m[92m   Compiling[0m zstd v0.13.5
+[1m[92m   Compiling[0m near-primitives v0.37.4
+[1m[92m   Compiling[0m near-primitives v0.31.1
 [1m[92m   Compiling[0m async-trait v0.1.92
 [1m[92m   Compiling[0m near-sdk v5.17.2
+[1m[92m   Compiling[0m near-chain-configs v0.37.4
 [1m[92m   Compiling[0m near-contract-standards v5.17.2
+[1m[92m   Compiling[0m near-jsonrpc-primitives v0.37.4
 [1m[92m   Compiling[0m near-jsonrpc-client v0.22.0
 [1m[92m   Compiling[0m crying-croc v0.1.0 (/home/runner/work/crying-croc/crying-croc)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 43.70s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 48.93s
 [1m[92m     Running[0m unittests src/lib.rs (target/debug/deps/crying_croc-362e460eb4fec3bd)
 
 running 41 tests
 test tests::account_progress_is_none_for_unknown_account ... ok
-test tests::check_in_twice_in_one_day_is_rejected - should panic ... ok
 test tests::check_in_is_blocked_until_a_three_day_backlog_is_cleared - should panic ... ok
+test tests::check_in_twice_in_one_day_is_rejected - should panic ... ok
 test tests::account_progress_is_resolved_after_claim ... ok
 test tests::claim_is_rejected_while_a_backlog_exists - should panic ... ok
 test tests::claim_on_the_same_day_as_check_in_is_rejected_until_settlement - should panic ... ok
@@ -156,8 +156,8 @@ test tests::claim_moves_exactly_the_recorded_reward_from_escrow_to_claimer ... o
 test tests::claim_twice_is_rejected - should panic ... ok
 test tests::controllable_clock_uses_the_selected_day ... ok
 test tests::ft_metadata_matches_project_token_metadata ... ok
-test tests::get_day_is_none_before_settlement ... ok
 test tests::claim_pays_daily_reward_and_milestone_bonus_exactly_once ... ok
+test tests::get_day_is_none_before_settlement ... ok
 test tests::get_day_returns_good_day_record_after_settlement ... ok
 test tests::get_day_returns_missed_day_record_after_settlement ... ok
 test tests::climbing_to_streak_seven_again_does_not_pay_the_milestone_twice ... ok
@@ -177,8 +177,8 @@ test tests::storage_unregister_with_force_is_refused_for_unresolved_reward - sho
 test tests::storage_unregister_without_force_is_refused_for_unresolved_reward - should panic ... ok
 test tests::supply_matches_treasury_escrow_and_holders_after_day_claim_and_transfer ... ok
 test tests::target_met_exactly_is_successful ... ok
-test tests::target_missed_by_one_burns_exactly_five_percent ... ok
 test tests::ten_day_backlog_settles_seven_days_then_the_remaining_three ... ok
+test tests::target_missed_by_one_burns_exactly_five_percent ... ok
 test tests::three_day_backlog_settles_in_day_order_and_then_allows_check_in ... ok
 test tests::treasury_cannot_transfer_with_ft_transfer - should panic ... ok
 test tests::treasury_cannot_transfer_with_ft_transfer_call - should panic ... ok
@@ -188,7 +188,7 @@ test tests::milestone_bonus_is_paid_only_at_streaks_7_15_25_and_100 ... ok
 test tests::total_supply_never_exceeds_one_billion ... ok
 test tests::sixty_day_replay_matches_independent_reference_and_simulation_csv ... ok
 
-test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 35.67s
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 28.34s
 
 [1m[92m   Compiling[0m syn v3.0.10
 [1m[92m   Compiling[0m itoa v1.0.19
@@ -198,10 +198,10 @@ test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; fin
 [1m[92m   Compiling[0m borsh v1.8.1
 [1m[92m   Compiling[0m serde v1.0.229
 [1m[92m   Compiling[0m near-sdk-macros v5.17.2
-[1m[92m   Compiling[0m near-token v0.3.6
 [1m[92m   Compiling[0m near-account-id v1.1.4
 [1m[92m   Compiling[0m near-gas v0.3.7
+[1m[92m   Compiling[0m near-token v0.3.6
 [1m[92m   Compiling[0m near-sdk v5.17.2
 [1m[92m   Compiling[0m near-contract-standards v5.17.2
 [1m[92m   Compiling[0m crying-croc v0.1.0 (/home/runner/work/crying-croc/crying-croc)
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 6.80s
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 6.92s
