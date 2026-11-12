@@ -114,11 +114,13 @@ export function StoryExperience() {
 
           return (
             <article
-              className="home-story-chapter"
+              className={`home-story-chapter${activeChapter === index ? " is-active" : ""}`}
               id={`story-chapter-${chapter.number}`}
               data-story-chapter={index}
               key={chapter.number}
               aria-labelledby={`story-heading-${chapter.number}`}
+              aria-current={activeChapter === index ? "step" : undefined}
+              style={{ top: `${112 + index * 11}px`, zIndex: index + 2 }}
             >
               <div className="home-story-index" aria-hidden="true">
                 <span>{chapter.number}</span>

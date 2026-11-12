@@ -24,7 +24,7 @@ export default function Home() {
       <div className="site-shell">
         <header className="topbar">
           <Link className="brand" href="/"><span className="brand-mark">C</span><span>CRYING <em>CROC</em></span></Link>
-          <nav className="nav" aria-label="Main navigation"><Link className="active" href="/">Home</Link><Link href="#story">The Story</Link><Link href="/check-in">Check In</Link><Link href="/protocol-stats">Protocol Stats</Link></nav>
+          <nav className="nav" aria-label="Main navigation"><Link className="active" href="/">Home</Link><Link href="/check-in">Check In</Link><Link href="/protocol-stats">Protocol Stats</Link></nav>
           <div className="header-actions"><span className="network"><span className="live-dot" />NEAR TESTNET</span><button className="connect-btn"><Wallet />Connect Wallet</button></div>
         </header>
         <section className="hero"><div className="hero-copy"><span className="eyebrow"><span /> COMMUNITY TOKEN EXPERIMENT</span><h1>$CROC<br /><span>ON NEAR.</span></h1><p>One community. One daily target. Every check-in counts.</p><p className="card-description">Crying Croc is a community-powered token experiment built around daily participation. Show up, reach the target, and share in the rewards. Miss the target, and the treasury takes a hit.</p><div className="hero-actions"><Link className="button" href="/check-in">Enter the Check-In <ArrowRight /></Link><Link className="button secondary" href="/protocol-stats">Explore Protocol Stats <BarChart3 /></Link></div></div></section>
