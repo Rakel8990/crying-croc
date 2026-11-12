@@ -1,0 +1,8 @@
+CROC milestone testnet verification: d3aa408f9474a90762943bcb0ce9bf5cb602c6bc / 43231347872
+Contract: croc-milestone-43231347872-1.testnet
+Copy: milestone, 5-minute days, target 5
+Deploy plus new(): one atomic transaction, hash 5VXVXhiFkyDe6yVttd3LGZWdfDnVLsjYLG13dQww6KWP, exactly two actions
+Smoke: five registered check-ins, settled streak 8, claimer received 1186161.7903411195421875 CROC (1186161790341119542187500 yoctoCROC)
+Status: today's check-ins 0; streak 8; longest streak 8; pool 672485130.5028058127734375 CROC; treasury 284877351.40248605773046875 CROC
+Contract native balance: 10.0009477828463227 NEAR (10000947782846322700000000 yoctoNEAR)
+Gas: gas.csv records gas and native fees from finalized transaction and receipt outcomes, in NEAR and yoctoNEAR.
