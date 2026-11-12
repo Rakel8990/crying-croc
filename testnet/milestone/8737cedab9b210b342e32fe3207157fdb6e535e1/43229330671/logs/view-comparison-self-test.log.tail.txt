@@ -1,0 +1,1 @@
+Canonical view comparison self-test verified pretty/compact arrays, quoted strings, numbers, and trailing newlines.

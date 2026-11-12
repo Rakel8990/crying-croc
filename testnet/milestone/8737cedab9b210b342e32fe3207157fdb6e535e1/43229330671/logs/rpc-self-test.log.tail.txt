@@ -1,0 +1,2 @@
+RPC attempt=1 status=200
+RPC stdout self-test verified captured output contains only the fake response body.
