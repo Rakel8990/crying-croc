@@ -20,7 +20,7 @@ Scenario inputs are explicit: steady crowds of 200, 500 and 1,000 wallets each c
 
 ## Results
 
-The following values match the workflow output published at SHA `61a869a76be466cea2058782197508c4a1138076` (`adaptive_target_summary.md` and its CSV files on `ci-logs`).
+The following values match the workflow output published at SHA `fb1ea339f417f91eab77b1ed6add12c6052d4aa1` (`adaptive_target_summary.md` and its CSV files on `ci-logs`).
 
 | Scenario | Wallets | Rule | Missed days | Treasury burned (CROC) | Days to recover |
 |---|---:|:---:|---:|---:|---:|

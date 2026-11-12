@@ -4,11 +4,11 @@ Updated 2026-11-11. Cargo is not installed on the developer PC; builds and unit 
 
 ## Current milestone branch status (2026-11-12)
 
-- Branch `milestone` is at `deb235b408b52db7a643cd081b99319359014afa`; its matching `ci-latest.txt` reports 41 unit tests passed and the Wasm build succeeded. The matching main CI and actionlint run is `43079336993`; the milestone simulation run is `43079336631`; the milestone testnet run is `43080463005` (Actions API outcomes verified).
-- Branch `main` is at `ab3c12db1e5c97934e09828c57bff333a04b97ca`; its test workflow `42973475684` and actionlint step succeeded, but `ci-logs/ci-latest.txt` does not match this SHA, so its test count is unverified from ci-logs. Its simulation workflow run `43079599334` was skipped.
-- Commit `61a869a76be466cea2058782197508c4a1138076` published simulation summaries, CSVs and charts under its `<sha>/simulation/` directory; milestone simulation run `43169596972` succeeded. The adaptive results in `docs/simulation/adaptive_target.md` now match that published output, including the corrected rule B/C bot-spike target description.
-- The canonical milestone RPC comparison self-test and workflow updates are in that same commit. No testnet workflow was dispatched. The matching main CI/actionlint run for `61a869a76be466cea2058782197508c4a1138076` was still in progress when this note was written.
-- A later fetch showed the main CI publisher had force-replaced `ci-logs`, removing simulation files despite both workflows reporting success. The milestone branch's `test.yml` publisher is being changed to preserve the branch history and retry concurrent pushes; verification is pending.
+- Branch `milestone` is at `fb1ea339f417f91eab77b1ed6add12c6052d4aa1`; its matching `ci-latest.txt` reports 41 unit tests passed and a successful Wasm build. Main CI run `43170671037` and its actionlint step succeeded.
+- Milestone simulation run `43170671051` succeeded and its summaries, CSVs and charts remain at `<sha>/simulation/` on `ci-logs` after the main CI publisher completed. The adaptive results in `docs/simulation/adaptive_target.md` match those published files, including the corrected rule B/C bot-spike target description.
+- The milestone testnet workflow's last run is `43080463005` and succeeded for SHA `deb235b408b52db7a643cd081b99319359014afa`. No testnet workflow was dispatched during this update.
+- Branch `main` remains at `ab3c12db1e5c97934e09828c57bff333a04b97ca`; its test workflow `42973475684` and actionlint step succeeded, but `ci-logs/ci-latest.txt` does not match that SHA, so its test count is unverified from ci-logs. Its simulation workflow run `43079599334` was skipped.
+- The milestone branch's `test.yml` publisher now updates `ci-latest.txt` without force-replacing the `ci-logs` branch and retries concurrent pushes. The main branch was not changed.
 
 ## Done
 
