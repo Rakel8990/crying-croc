@@ -26,12 +26,12 @@ export function TokenArtworkPair() {
         <motion.figure
           key={token.symbol}
           className="token-art"
+          aria-label={`${token.symbol} token. ${token.description}.`}
           animate={
             prefersReducedMotion
               ? undefined
               : {
                   y: [0, -7, 0],
-                  rotateY: index === 0 ? [-2, 2, -2] : [2, -2, 2],
                   rotateZ: index === 0 ? [-0.8, 0.8, -0.8] : [0.8, -0.8, 0.8],
                 }
           }
@@ -40,20 +40,42 @@ export function TokenArtworkPair() {
               ? undefined
               : {
                   y: { duration: 3.6, repeat: Infinity, ease: "easeInOut", delay: index * 0.45 },
-                  rotateY: { duration: 3.6, repeat: Infinity, ease: "easeInOut", delay: index * 0.45 },
                   rotateZ: { duration: 3.6, repeat: Infinity, ease: "easeInOut", delay: index * 0.45 },
                 }
           }
-          whileHover={prefersReducedMotion ? undefined : { scale: 1.04, rotateY: index === 0 ? 5 : -5 }}
-          style={{ transformStyle: "preserve-3d" }}
+          whileHover={prefersReducedMotion ? undefined : { scale: 1.03 }}
+          style={{ perspective: "1000px", transformStyle: "preserve-3d" }}
         >
-          <motion.img
-            src={token.source}
-            alt={`${token.symbol} token: ${token.description}`}
-            className="token-art-image"
-            loading="eager"
-            draggable={false}
-          />
+          <motion.span
+            className="token-art-flip"
+            animate={prefersReducedMotion ? undefined : { rotateY: [0, 0, 180, 180, 360] }}
+            transition={
+              prefersReducedMotion
+                ? undefined
+                : {
+                    rotateY: {
+                      duration: 7,
+                      times: [0, 0.4, 0.5, 0.9, 1],
+                      repeat: Infinity,
+                      ease: "linear",
+                    },
+                  }
+            }
+            style={{ transformStyle: "preserve-3d" }}
+          >
+            <span className="token-art-face token-art-face--front" aria-hidden="true">
+              <img
+                src={token.source}
+                alt=""
+                className="token-art-image"
+                loading="eager"
+                draggable={false}
+              />
+            </span>
+            <span className="token-art-face token-art-face--back" aria-hidden="true">
+              <span className="token-art-back-symbol">{token.symbol.toLowerCase()}</span>
+            </span>
+          </motion.span>
         </motion.figure>
       ))}
     </div>
