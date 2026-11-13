@@ -54,8 +54,8 @@ export function TokenArtworkPair() {
                 ? undefined
                 : {
                     rotateY: {
-                      duration: 7,
-                      times: [0, 0.4, 0.5, 0.9, 1],
+                      duration: 5.4,
+                      times: [0, 0.64815, 0.73148, 0.91667, 1],
                       repeat: Infinity,
                       ease: "linear",
                     },
@@ -73,7 +73,9 @@ export function TokenArtworkPair() {
               />
             </span>
             <span className="token-art-face token-art-face--back" aria-hidden="true">
-              <span className="token-art-back-symbol">{token.symbol.toLowerCase()}</span>
+              <span className="token-art-metal">
+                <span className="token-art-back-symbol">{token.symbol.toLowerCase()}</span>
+              </span>
             </span>
           </motion.span>
         </motion.figure>
