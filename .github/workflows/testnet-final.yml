@@ -25,6 +25,7 @@ jobs:
       CROC_DAY_LENGTH_NS: "86400000000000"
       CROC_TARGET: "5"
       NEAR_RPC: https://rpc.testnet.near.org
+      NEAR_RPC_FALLBACK: https://test.rpc.fastnear.com
       CROC_SOURCE_SHA: ${{ github.sha }}
       CROC_RUN_ID: ${{ github.run_id }}
       CROC_RUN_ATTEMPT: ${{ github.run_attempt }}
@@ -108,6 +109,44 @@ jobs:
           grep -Fq '0.31.1' "$CROC_RUN_DIR/logs/near-version.log" || { echo 'near-cli-rs version verification failed.'; exit 1; }
           printf 'near-cli-rs method=%s version=0.31.1\n' "$install_method"
 
+      - name: Self-test final RPC stdout capture
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +x
+          exec > >(tee -a "$CROC_RUN_DIR/logs/rpc-self-test.log") 2>&1
+          source "$GITHUB_WORKSPACE/scripts/milestone_rpc.sh"
+          fake_curl_dir="$CROC_RUN_DIR/fake-curl"
+          fake_response_file="$CROC_RUN_DIR/output/rpc-stdout-self-test.json"
+          fake_body='{"jsonrpc":"2.0","result":{"probe":"only-body"}}'
+          mkdir -p "$fake_curl_dir"
+          cat > "$fake_curl_dir/curl" <<'FAKE_CURL'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          output_file=""
+          while (($#)); do
+            if [[ "$1" == "--output" ]]; then
+              output_file="$2"
+              shift 2
+            else
+              shift
+            fi
+          done
+          [[ -n "$output_file" ]]
+          printf '%s' '{"jsonrpc":"2.0","result":{"probe":"only-body"}}' > "$output_file"
+          printf '200'
+          FAKE_CURL
+          chmod 700 "$fake_curl_dir/curl"
+          original_path="$PATH"
+          export PATH="$fake_curl_dir:$PATH"
+          fake_capture="$(rpc_post_to_file "RPC stdout self-test" '{}' "$fake_response_file")"
+          export PATH="$original_path"
+          [[ "$fake_capture" == "$fake_body" ]] || {
+            printf 'RPC stdout self-test failed: expected=%s actual=%s\n' "$fake_body" "$fake_capture"
+            exit 1
+          }
+          echo "RPC stdout self-test verified captured output contains only the fake response body."
+
       - name: Record near-cli-rs command help
         shell: bash
         run: |
@@ -129,23 +168,9 @@ jobs:
           export PATH="$CROC_CLI_HOME/bin:$PATH"
           exec > >(tee -a "$CROC_RUN_DIR/logs/run.log") 2>&1
 
-          fail_step() {
-            printf '%s failed (exit code %s).\n' "$1" "$2" >&2
-            exit "$2"
-          }
-          [[ "$CROC_DELETE_CONFIRM" == 'DELETE_ALL_KEYS_FOR_THIS_TESTNET_ACCOUNT' ]] || fail_step 'key-deletion confirmation' 1
+          source "$GITHUB_WORKSPACE/scripts/milestone_rpc.sh"
 
-          rpc_post_to_file() {
-            local label="$1" body="$2" output="$3" status
-            if curl --proto '=https' --tlsv1.2 -fsS -H 'Content-Type: application/json' --data "$body" "$NEAR_RPC" >"$output" 2>/dev/null; then
-              :
-            else
-              status=$?
-              fail_step "$label RPC request" "$status"
-            fi
-            [[ -s "$output" ]] || fail_step "$label RPC response" 5
-            jq -e . "$output" >/dev/null 2>&1 || fail_step "$label RPC JSON validation" 5
-          }
+          [[ "$CROC_DELETE_CONFIRM" == 'DELETE_ALL_KEYS_FOR_THIS_TESTNET_ACCOUNT' ]] || fail_step 'key-deletion confirmation' 1
 
           checked_jq() {
             local label="$1" input="$2" filter="$3" status
@@ -188,7 +213,7 @@ jobs:
             account_file="$CROC_RUN_DIR/output/rpc-account-created.json"
             deadline=$((SECONDS + 60))
             while (( SECONDS < deadline )); do
-              if curl --proto '=https' --tlsv1.2 --max-time 5 -fsS -H 'Content-Type: application/json' --data "$account_body" "$NEAR_RPC" >"$account_file" 2>/dev/null \
+              if rpc_post_to_file 'faucet account visibility check' "$account_body" "$account_file" >/dev/null \
                 && jq -e '.result.amount != null' "$account_file" >/dev/null 2>&1; then
                 account_ready=1
                 break
@@ -222,7 +247,7 @@ jobs:
               if (( retried == 0 )) && grep -aFq 'Transaction has expired.' "$log_file"; then
                 retry_state_body='{"jsonrpc":"2.0","id":"croc-final-expiry-check","method":"block","params":{"finality":"final"}}'
                 retry_state_file="$CROC_RUN_DIR/output/rpc-expiry-retry.json"
-                rpc_post_to_file 'expiration retry chain-state check' "$retry_state_body" "$retry_state_file"
+                rpc_post_to_file 'expiration retry chain-state check' "$retry_state_body" "$retry_state_file" >/dev/null
                 checked_jq 'expiration retry chain-state check' "$retry_state_file" '.result.header.hash' >/dev/null
                 retried=1
                 continue
@@ -248,7 +273,7 @@ jobs:
             args_b64="$(printf '%s' "$args" | base64 -w 0)"
             body="$(jq -cn --arg account "$contract_id" --arg method "$method" --arg args "$args_b64" '{jsonrpc:"2.0",id:"croc-final-view",method:"query",params:{request_type:"call_function",finality:"final",account_id:$account,method_name:$method,args_base64:$args}}')"
             output="$CROC_RUN_DIR/output/rpc-view-${method}.json"
-            rpc_post_to_file "view:$method" "$body" "$output"
+            rpc_post_to_file "view:$method" "$body" "$output" >/dev/null
             checked_jq "view:$method" "$output" '[.result.result[]] | implode | fromjson'
           }
 
@@ -259,6 +284,7 @@ jobs:
 
           wasm_file="$GITHUB_WORKSPACE/target/wasm32-unknown-unknown/release/crying_croc.wasm"
           [[ -s "$wasm_file" ]] || fail_step 'release Wasm file assertion' 1
+          wasm_bytes="$(wc -c < "$wasm_file" | tr -d ' ')"
           wasm_sha256_hex="$(sha256sum "$wasm_file" | awk '{print $1}')"
           wasm_sha256_base58="$(python3 -c 'import sys; exec("raw=bytes.fromhex(sys.argv[1])\nalphabet=\"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz\"\nn=int.from_bytes(raw,\"big\")\noutput=\"\"\nwhile n:\n    n,remainder=divmod(n,58)\n    output=alphabet[remainder]+output\nprint(\"1\"*(len(raw)-len(raw.lstrip(bytes([0]))))+output)")' "$wasm_sha256_hex")"
 
@@ -266,7 +292,7 @@ jobs:
           [[ -n "$deploy_hash" ]] || fail_step 'deploy-init transaction hash' 1
           tx_body="$(jq -cn --arg hash "$deploy_hash" --arg signer "$contract_id" '{jsonrpc:"2.0",id:"croc-final-tx",method:"EXPERIMENTAL_tx_status",params:[$hash,$signer]}')"
           tx_file="$CROC_RUN_DIR/output/tx-deploy-init.json"
-          rpc_post_to_file 'atomic deploy transaction status' "$tx_body" "$tx_file"
+          rpc_post_to_file 'atomic deploy transaction status' "$tx_body" "$tx_file" >/dev/null
           checked_jq 'atomic deploy action verification' "$tx_file" '.result.transaction.actions | length == 2 and .[0].DeployContract != null and .[1].FunctionCall.method_name == "new"' >/dev/null
 
           [[ "$(view_method day_length_ns '{}')" == "$CROC_DAY_LENGTH_NS" ]] || fail_step 'day_length_ns read-back assertion' 1
@@ -278,40 +304,42 @@ jobs:
 
           account_body="$(jq -cn --arg account "$contract_id" '{jsonrpc:"2.0",id:"croc-final-account",method:"query",params:{request_type:"view_account",finality:"final",account_id:$account}}')"
           account_file="$CROC_RUN_DIR/output/rpc-view-account.json"
-          rpc_post_to_file 'view_account' "$account_body" "$account_file"
+          rpc_post_to_file 'view_account' "$account_body" "$account_file" >/dev/null
           onchain_code_hash="$(checked_jq 'view_account code hash' "$account_file" '.result.code_hash')"
           contract_balance="$(checked_jq 'view_account balance' "$account_file" '.result.amount')"
           contract_storage_usage="$(checked_jq 'view_account storage usage' "$account_file" '.result.storage_usage')"
           [[ "$wasm_sha256_base58" == "$onchain_code_hash" ]] || fail_step 'Wasm SHA-256 and on-chain code-hash assertion' 1
           available_balance="$(python3 -c 'import sys; amount, storage = map(int, sys.argv[1:]); print(amount - storage * 10**19)' "$contract_balance" "$contract_storage_usage")" || fail_step 'available balance calculation before key deletion' 1
           python3 -c 'import sys; raise SystemExit(0 if int(sys.argv[1]) >= 5 * 10**24 else 1)' "$available_balance" || fail_step 'minimum 5 NEAR available balance assertion before key deletion' 1
+          available_margin="$(python3 -c 'import sys; avail = int(sys.argv[1]); margin = avail - 5 * 10**24; print(f"{margin} yoctoNEAR ({margin / 10**24:.4f} NEAR)")' "$available_balance")"
 
           storage_estimate='Storage estimate: unmeasured; the published fast-run result has no bytes-per-day measurement.'
           printf '%s\n' "$storage_estimate" >"$CROC_RUN_DIR/output/storage-estimate.txt"
 
           key_list_body="$(jq -cn --arg account "$contract_id" '{jsonrpc:"2.0",id:"croc-final-keys",method:"query",params:{request_type:"view_access_key_list",finality:"final",account_id:$account}}')"
           before_keys="$CROC_PRIVATE_DIR/access-keys-before-delete.json"
-          rpc_post_to_file 'pre-delete access-key list' "$key_list_body" "$before_keys"
+          rpc_post_to_file 'pre-delete access-key list' "$key_list_body" "$before_keys" >/dev/null
           public_keys_csv="$(jq -er '[.result.keys[].public_key] | join(",") | select(length > 0)' "$before_keys")" || fail_step 'pre-delete access-key list assertion' 1
           delete_hash="$(sign_and_send delete-keys account delete-keys "$contract_id" public-keys "$public_keys_csv" --signer-tokens network-config testnet sign-with-access-key-file "$contract_key" send)" || delete_hash=''
           [[ -n "$delete_hash" ]] || fail_step 'delete-keys transaction hash' 1
           after_keys="$CROC_PRIVATE_DIR/access-keys-after-delete.json"
-          rpc_post_to_file 'post-delete access-key list' "$key_list_body" "$after_keys"
+          rpc_post_to_file 'post-delete access-key list' "$key_list_body" "$after_keys" >/dev/null
           checked_jq 'empty post-delete access-key list assertion' "$after_keys" '.result.keys | length == 0' >/dev/null
 
           cat >"$CROC_RUN_DIR/output/proof.json" <<EOF
           {"account_id":"$contract_id","delete_transaction_hash":"$delete_hash","access_keys_after_delete":[],"wasm_sha256":"$wasm_sha256_hex","onchain_code_hash":"$onchain_code_hash"}
           EOF
           cat >"$CROC_RUN_DIR/output/result.json" <<EOF
-          {"source_sha":"$CROC_SOURCE_SHA","run_id":"$CROC_RUN_ID","copy":"final","contract_account_id":"$contract_id","day_length_ns":$CROC_DAY_LENGTH_NS,"target":$CROC_TARGET,"deploy_init_transaction_hash":"$deploy_hash","deploy_init_action_count":2,"wasm_sha256":"$wasm_sha256_hex","onchain_code_hash":"$onchain_code_hash","contract_balance_yoctoNEAR":"$contract_balance","contract_storage_usage_bytes":"$contract_storage_usage","storage_estimate":"$storage_estimate","delete_transaction_hash":"$delete_hash","access_keys_after_delete":[]}
+          {"source_sha":"$CROC_SOURCE_SHA","run_id":"$CROC_RUN_ID","copy":"final","contract_account_id":"$contract_id","day_length_ns":$CROC_DAY_LENGTH_NS,"target":$CROC_TARGET,"deploy_init_transaction_hash":"$deploy_hash","deploy_init_action_count":2,"wasm_sha256":"$wasm_sha256_hex","wasm_size_bytes":$wasm_bytes,"onchain_code_hash":"$onchain_code_hash","contract_balance_yoctoNEAR":"$contract_balance","contract_storage_usage_bytes":"$contract_storage_usage","storage_estimate":"$storage_estimate","delete_transaction_hash":"$delete_hash","access_keys_after_delete":[]}
           EOF
           cat >"$CROC_RUN_DIR/output/summary.txt" <<EOF
           CROC final testnet deployment: $CROC_SOURCE_SHA / $CROC_RUN_ID
           Contract: $contract_id
           Atomic deploy plus new(): $deploy_hash (two actions); 24-hour days; target 5.
           Read-backs only: clean state verified; no check-in smoke test ran.
-          Wasm SHA-256: $wasm_sha256_hex; on-chain code hash: $onchain_code_hash; match verified.
-          Contract balance before key deletion: $contract_balance yoctoNEAR; minimum 5 NEAR verified.
+          Release Wasm size: $wasm_bytes bytes; Wasm SHA-256: $wasm_sha256_hex; on-chain code hash: $onchain_code_hash; match verified.
+          Contract balance before key deletion: $contract_balance yoctoNEAR; storage usage: $contract_storage_usage bytes; minimum 5 NEAR verified.
+          Available balance margin over 5 NEAR minimum: $available_margin.
           $storage_estimate
           Delete-all-keys transaction: $delete_hash; access-key list is empty.
           EOF
