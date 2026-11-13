@@ -1,25 +1,7 @@
 import Link from "next/link"
 import { Wallet } from "lucide-react"
 import { StoryExperience } from "./story/story-experience"
-
-function RotatingNeonIcons() {
-  return (
-    <div className="rotating-icons-container">
-      <div className="rotating-icon croc-icon">
-        <img
-          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-CAftJKanzS96oei4XGZz8uyXySxaEX.png"
-          alt="Neon Crocodile"
-        />
-      </div>
-      <div className="rotating-icon arrow-icon">
-        <img
-          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-ikKtf7XkrQMylrr6knAHiLD6pqeLy3.png"
-          alt="Neon Arrow"
-        />
-      </div>
-    </div>
-  )
-}
+import { TokenFlipCard } from "../components/token-flip-card"
 
 export default function Home() {
   return (
@@ -32,7 +14,22 @@ export default function Home() {
           <nav className="nav" aria-label="Main navigation"><Link className="active" href="/">Home</Link><Link href="/check-in">Check In</Link><Link href="/protocol-stats">Protocol Stats</Link></nav>
           <div className="header-actions"><span className="network"><span className="live-dot" />NEAR TESTNET</span><button className="connect-btn"><Wallet />Connect Wallet</button></div>
         </header>
-        <section className="hero"><div className="hero-copy hero-copy-with-icons"><div className="hero-with-icons"><h1>$CROC<br /><span>ON NEAR.</span></h1><RotatingNeonIcons /></div><p>One community. One daily target. Every check-in counts.</p><p className="card-description">Crying Croc is a community-powered token experiment built around daily participation. Show up, reach the target, and share in the rewards. Miss the target, and the treasury takes a hit.</p></div></section>
+        <section className="hero"><div className="hero-copy hero-copy-with-icons"><div className="hero-with-icons"><h1>$CROC<br /><span>ON NEAR.</span></h1><div className="flex flex-wrap items-center justify-center gap-4 mt-8 md:gap-6">
+          <TokenFlipCard
+            frontImage="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-f8vEQRdb9svNwYZmWrXqx7AORNSWkO.png"
+            frontAlt="Glass crocodile mascot on a luminous emerald tile"
+            symbol="$CROC"
+            tokenName="Crying Croc"
+            description="A community-powered token built around daily participation."
+          />
+          <TokenFlipCard
+            frontImage="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-ikKtf7XkrQMylrr6knAHiLD6pqeLy3.png"
+            frontAlt="Translucent NEAR arrow logo on a glowing emerald tile"
+            symbol="$NEAR"
+            tokenName="NEAR Protocol"
+            description="An open network for builders and decentralized applications."
+          />
+        </div></div><p>One community. One daily target. Every check-in counts.</p><p className="card-description">Crying Croc is a community-powered token experiment built around daily participation. Show up, reach the target, and share in the rewards. Miss the target, and the treasury takes a hit.</p></div></section>
         <StoryExperience />
       </div>
     </main>
