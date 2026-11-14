@@ -236,8 +236,17 @@ export async function executeClaim(): Promise<{ success: boolean; txHash?: strin
     }
   } catch (err: any) {
     const msg = err?.message || String(err)
+    if (msg.includes("reward day is not settled yet") || msg.includes("not settled yet")) {
+      return {
+        success: false,
+        message: "Today's check-in is recorded! Rewards unlock tomorrow once the 24h community target settles.",
+      }
+    }
     if (msg.includes("there is no unresolved reward to claim")) {
       return { success: false, message: "No unresolved reward available to claim yet." }
+    }
+    if (msg.includes("User cancelled") || msg.includes("rejected")) {
+      return { success: false, message: "Transaction cancelled by user." }
     }
     return { success: false, message: "Claim failed: " + msg }
   }
