@@ -7,4 +7,4 @@ Project: CROC streak coin for the NEAR Hackathon. Read RULES.md first.
 - Commit after each green step. Stop and ask if a rule is unclear.
 - Use near-sdk 5.x and near-contract-standards. Pin versions, never "latest".
 
-RULES.md is authoritative. WHITEPAPER.md is background. Decisions in WHITEPAPER.md section 7 are closed; ask me before changing them. Follow test-driven-development and verification-before-completion. Install no other skills without asking me.
+RULES.md is authoritative. WHITEPAPER.md (now in docs/internal/) is background. Decisions in WHITEPAPER.md section 7 are closed; ask me before changing them. Follow test-driven-development and verification-before-completion. Install no other skills without asking me.

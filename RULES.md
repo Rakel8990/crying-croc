@@ -1,4 +1,4 @@
-# CROC streak coin: RULES v5 (final)
+# CROC streak coin: RULES (final)
 TOKEN: NEP-141 via near-contract-standards, 1B max, 18 decimals,
 integer math only, overflow-checks = true.
 Launch: 300M in a burn-only treasury (the contract's own balance).
@@ -24,12 +24,24 @@ GOOD DAY (check-ins >= TARGET):
   per_checker = floor(checker_part / count)
   Mint per_checker * count + treasury_part. Dust is not minted.
   The full pot leaves the pool. Streak +1.
+  MILESTONE BONUS (streaks 7, 15, 25, 100):
+    Paid once each at milestone thresholds 7, 15, 25, 100.
+    Bonus BPS of current treasury:
+      Streak 7:   100 bps
+      Streak 15:  150 bps
+      Streak 25:  250 bps
+      Streak 100: 500 bps
+    bonus_total = floor(treasury * bps / 10000)
+    bonus_per_checker = floor(bonus_total / count)
+    moved = bonus_per_checker * count
+    Moved from treasury to escrow, never minted. Dust stays in the treasury.
+    Checkers receive both parts (daily reward + milestone bonus) once.
 MISSED DAY: burn floor(treasury * 5 / 100). Streak = 0. No mint.
 
-CLAIM: pays the last unresolved day exactly once.
+CLAIM: pays both parts (daily reward + milestone bonus) of the last unresolved day once.
 storage_unregister is refused while a reward is unresolved, even with force.
-EVENTS: every check-in, mint, burn, claim and streak change.
+EVENTS: every check-in, mint, burn, claim, milestone and streak change.
 VIEWS: params, current streak, longest streak, today's count, pool,
-treasury.
+treasury, milestones_paid, get_day.
 INVARIANTS: supply never above 1B. No hidden mint. No upgrade path.
 Delete the contract keys only at the very end after final tests.

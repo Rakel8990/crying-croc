@@ -1,3 +1,5 @@
+> Historical design notes. README.md and RULES.md are authoritative.
+
 # Crycodile ($CROC): white paper (v5, matches RULES.md)
 
 **Authority:** RULES.md is the source of truth for contract behavior. If this document and RULES.md disagree, RULES.md wins. Ask the builder before changing anything listed under "Decisions".

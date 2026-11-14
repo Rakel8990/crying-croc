@@ -2,7 +2,7 @@
 
 `RULES.md` is authoritative. This document maps the current implementation and tests to the main review questions; it does not change the contract rules.
 
-## Five likely bug areas (WHITEPAPER.md §8)
+## Five likely bug areas (docs/internal/WHITEPAPER.md §8)
 
 | Bug area | Handling code | Tests |
 |---|---|---|
@@ -45,7 +45,7 @@ The expected accounting identity is `total_supply = treasury balance + reward es
 - **Reward escrow:** RULES.md specifies lazy payment but does not prescribe an escrow account. The account is derived as `escrow.` plus the contract account ID (for example, `escrow.croc.testnet`); earned checker rewards are minted there and transferred to each user on their next check-in or `claim()`. The treasury and derived escrow are both blocked from initiating ordinary FT transfers; escrow can only pay through `resolve_pending_reward`.
 - **Unregister burn:** NEP-141 standard storage unregistration removes a caller's remaining token balance. This implementation emits the standard burn event for that balance. RULES.md requires refusing unregistration during an unresolved reward but does not describe what happens to an otherwise eligible unregistering holder's balance.
 - **Additional settlement record fields:** Each day record also retains success, treasury-minted amount, and burned amount for the emitted settlement event, alongside the checker count and per-checker reward described in the design.
-- **Streak milestones:** On successful streaks 7, 15, 25, and 100, the contract moves respectively 100, 150, 250, and 500 basis points of the treasury to reward escrow, floors the amount per checker, and marks the milestone paid once. This bonus schedule is an added approved project decision; it is not specified in `RULES.md`. `get_day` exposes the bonus amount and `milestones_paid` exposes the four paid flags.
+- **Streak milestones:** On successful streaks 7, 15, 25, and 100, the contract moves respectively 100, 150, 250, and 500 basis points of the treasury to reward escrow, floors the amount per checker, and marks the milestone paid once. This bonus schedule is specified in `RULES.md`. `get_day` exposes the bonus amount and `milestones_paid` exposes the four paid flags.
 
 No other intentional change to the CROC arithmetic or user rules is known. There is no admin or upgrade method.
 

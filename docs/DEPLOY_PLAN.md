@@ -11,9 +11,9 @@
 - Deploying Wasm and calling `new()` must be two ordered actions in **one atomic NEAR transaction**. If either action fails, the transaction must roll back; never deploy and initialize in separate transactions.
 - The contract account needs NEAR for deployed code and per-day records. The final workflow must measure storage growth per day on testnet, calculate the projected storage reserve and its 2× buffer, and verify adequate funding before deleting any account key.
 
-## Stage 0: faucet probe (current step)
+## Stage 0: faucet probe (completed)
 
-`probe-testnet.yml` is a tiny manual workflow that installs pinned near-cli-rs in the GitHub runner, creates one fresh faucet-sponsored testnet account, queries its balance through the hard-coded testnet RPC, prints only the public account ID and balance, and removes the temporary key files. It does not deploy code. This probe must be run from `main`. A matching-SHA main CI report only verifies the repository's unit tests and Wasm build; it does not mean the probe itself has been run. The probe result must be read from its Actions run before any contract deployment workflow is written.
+`probe-testnet.yml` was a tiny manual workflow that installed pinned near-cli-rs in the GitHub runner, created one fresh faucet-sponsored testnet account, queried its balance through the hard-coded testnet RPC, printed only the public account ID and balance, and removed the temporary key files. It did not deploy code. This probe ran from `main` and verified testnet connectivity before contract deployment workflows were written.
 
 If the faucet-sponsored creation fails, stop. Do not build `testnet-fast.yml`, retry with a different account-creation route, or add a fallback that stores credentials elsewhere. Record the exact sanitized CLI/faucet error and the probe commit SHA first.
 
