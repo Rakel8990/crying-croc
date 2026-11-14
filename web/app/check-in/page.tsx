@@ -5,6 +5,15 @@ import { ArrowLeft, Check, CircleDollarSign, LoaderCircle, Wallet, ExternalLink 
 import { useState, useEffect } from "react"
 import { useCrocData } from "../../lib/contract"
 import { CONTRACT_ID } from "../../lib/config"
+import {
+  getConnectedAccountId,
+  connectMeteor,
+  disconnectMeteor,
+  checkUserCheckinStatus,
+  fetchUserBalance,
+  executeCheckIn,
+  executeClaim,
+} from "../../lib/near-wallet"
 
 export default function CheckInPage() {
   const { currentStreak, todayCheckins, target } = useCrocData()
@@ -12,9 +21,7 @@ export default function CheckInPage() {
   const [accountId, setAccountId] = useState<string | null>(null)
   const [checkedIn, setCheckedIn] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [streak, setStreak] = useState(0)
-  const [pending, setPending] = useState(0)
-  const [balance, setBalance] = useState(0)
+  const [balance, setBalance] = useState("0")
   const [message, setMessage] = useState("")
 
   const targetNum = Number(target) || 5
@@ -22,62 +29,79 @@ export default function CheckInPage() {
   const progressPercent = Math.min(100, Math.round((checkinsNum / targetNum) * 100))
 
   useEffect(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem("croc_testnet_account") : null
-    if (saved) {
-      setAccountId(saved)
-      setConnected(true)
-    }
+    getConnectedAccountId().then(async (id) => {
+      if (id) {
+        setAccountId(id)
+        setConnected(true)
+        const [status, bal] = await Promise.all([
+          checkUserCheckinStatus(id),
+          fetchUserBalance(id),
+        ])
+        if (status.checkedInToday) setCheckedIn(true)
+        if (bal) setBalance(bal)
+      }
+    })
   }, [])
 
-  const handleWalletToggle = () => {
+  const handleWalletToggle = async () => {
     if (connected) {
+      await disconnectMeteor()
       setConnected(false)
       setAccountId(null)
       setCheckedIn(false)
+      setBalance("0")
       setMessage("Wallet disconnected.")
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("croc_testnet_account")
-      }
     } else {
-      const input = window.prompt("Connect NEAR Testnet Wallet:\nEnter your account ID (e.g. yourname.testnet):", accountId || "rakel.testnet")
-      if (input && input.trim()) {
-        const id = input.trim()
-        setAccountId(id)
+      setLoading(true)
+      setMessage("")
+      const res = await connectMeteor()
+      setLoading(false)
+      if (res.success && res.accountId) {
+        setAccountId(res.accountId)
         setConnected(true)
-        setMessage(`Connected as ${id}`)
-        if (typeof window !== "undefined") {
-          localStorage.setItem("croc_testnet_account", id)
-        }
+        setMessage(`Connected as ${res.accountId}`)
+        const [status, bal] = await Promise.all([
+          checkUserCheckinStatus(res.accountId),
+          fetchUserBalance(res.accountId),
+        ])
+        if (status.checkedInToday) setCheckedIn(true)
+        if (bal) setBalance(bal)
+      } else if (res.message) {
+        setMessage(res.message)
       }
     }
   }
 
-  const handleCheckIn = () => {
+  const handleCheckIn = async () => {
     if (!connected) {
-      handleWalletToggle()
+      await handleWalletToggle()
       return
     }
     setLoading(true)
-    setMessage("")
-    window.setTimeout(() => {
+    setMessage("Please approve the check-in transaction in Meteor Wallet...")
+    const res = await executeCheckIn()
+    setLoading(false)
+    setMessage(res.message)
+    if (res.success) {
       setCheckedIn(true)
-      setStreak((current) => current + 1)
-      setPending((current) => current + 320)
-      setLoading(false)
-      setMessage("Check-in confirmed for Day 0! +320 CROC added to pending rewards.")
-    }, 1000)
+      if (accountId) {
+        const bal = await fetchUserBalance(accountId)
+        if (bal) setBalance(bal)
+      }
+    }
   }
 
-  const handleClaim = () => {
-    if (!connected || pending === 0) return
+  const handleClaim = async () => {
+    if (!connected) return
     setLoading(true)
-    setMessage("")
-    window.setTimeout(() => {
-      setBalance((current) => current + pending)
-      setPending(0)
-      setLoading(false)
-      setMessage("Rewards claimed and moved to your wallet balance.")
-    }, 1000)
+    setMessage("Please approve the claim transaction in Meteor Wallet...")
+    const res = await executeClaim()
+    setLoading(false)
+    setMessage(res.message)
+    if (res.success && accountId) {
+      const bal = await fetchUserBalance(accountId)
+      if (bal) setBalance(bal)
+    }
   }
 
   return (
@@ -91,8 +115,8 @@ export default function CheckInPage() {
           <Link className="back-link" href="/"><ArrowLeft /> Back to CRYCODILE</Link>
           <div className="header-actions">
             <span className="network"><span className="live-dot" />NEAR TESTNET</span>
-            <button className="button header-wallet" onClick={handleWalletToggle}>
-              <Wallet />{connected ? (accountId ? accountId : "Wallet Connected") : "Connect Wallet"}
+            <button className="button header-wallet" onClick={handleWalletToggle} disabled={loading}>
+              <Wallet />{connected ? (accountId ? accountId : "Wallet Connected") : "Connect Meteor"}
             </button>
           </div>
         </header>
@@ -122,21 +146,21 @@ export default function CheckInPage() {
               onClick={handleCheckIn}
             >
               {loading ? <LoaderCircle className="spin" /> : <Check />}
-              {loading ? "Processing..." : checkedIn ? "Checked In Today" : "Check In"}
+              {loading ? "Confirming..." : checkedIn ? "Checked In Today" : "Check In"}
             </button>
             {message && <div className="message checkin-message" role="status" aria-live="polite">{message}</div>}
           </section>
 
           <section className="glass-card checkin-wallet-panel" aria-label="Wallet summary">
             <div className="checkin-metrics">
-              <div className="checkin-metric"><span>Wallet status</span><strong>{connected ? "Connected" : "Not connected"}</strong><small>{connected ? (accountId || "0x8C...CROC") : "Connect to begin"}</small></div>
-              <div className="checkin-metric"><span>Current streak</span><strong>{currentStreak !== "Unavailable" && currentStreak !== "0" ? `${currentStreak} days` : `${streak} days`}</strong><small>+1 if you check in today</small></div>
-              <div className="checkin-metric"><span>Pending rewards</span><strong>{pending.toLocaleString()}</strong><small>CROC available to claim</small></div>
-              <div className="checkin-metric"><span>Wallet balance</span><strong>{balance.toLocaleString()}</strong><small>CROC</small></div>
+              <div className="checkin-metric"><span>Wallet status</span><strong>{connected ? "Connected" : "Not connected"}</strong><small>{connected ? (accountId || "Connected") : "Connect Meteor to begin"}</small></div>
+              <div className="checkin-metric"><span>Current streak</span><strong>{currentStreak !== "Unavailable" ? `${currentStreak} days` : "0 days"}</strong><small>+1 if you check in today</small></div>
+              <div className="checkin-metric"><span>Pending rewards</span><strong>{checkedIn ? "Pending Settlement" : "0"}</strong><small>Minted at daily 24h settlement</small></div>
+              <div className="checkin-metric"><span>Wallet balance</span><strong>{balance}</strong><small>CROC</small></div>
             </div>
             <button
               className="button"
-              disabled={!connected || pending === 0 || loading}
+              disabled={!connected || loading}
               onClick={handleClaim}
             >
               <CircleDollarSign /> Claim Rewards
@@ -169,7 +193,7 @@ export default function CheckInPage() {
             rel="noopener noreferrer"
             style={{ fontSize: "12px", padding: "8px 14px", textDecoration: "none" }}
           >
-            <Check /> Check In on NEARBlocks Explorer <ExternalLink style={{ width: "14px", height: "14px" }} />
+            <Check /> View Contract on NEARBlocks <ExternalLink style={{ width: "14px", height: "14px" }} />
           </a>
         </div>
         <footer className="site-footer"><span>$CROC / CHECK-IN</span><span>Testnet only. Not audited. No price shown.</span></footer>
