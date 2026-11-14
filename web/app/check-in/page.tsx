@@ -3,15 +3,21 @@
 import Link from "next/link"
 import { ArrowLeft, Check, CircleDollarSign, LoaderCircle, Wallet } from "lucide-react"
 import { useState } from "react"
+import { useCrocData } from "../../lib/contract"
 
 export default function CheckInPage() {
+  const { currentStreak, todayCheckins, target } = useCrocData()
   const [connected, setConnected] = useState(false)
   const [checkedIn, setCheckedIn] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [streak, setStreak] = useState(12)
-  const [pending, setPending] = useState(2480)
-  const [balance, setBalance] = useState(18420)
+  const [streak, setStreak] = useState(0)
+  const [pending, setPending] = useState(0)
+  const [balance, setBalance] = useState(0)
   const [message, setMessage] = useState("")
+
+  const targetNum = Number(target) || 5
+  const checkinsNum = Number(todayCheckins) || 0
+  const progressPercent = Math.min(100, Math.round((checkinsNum / targetNum) * 100))
 
   const run = (action: () => void, success: string) => {
     setLoading(true)
@@ -33,7 +39,7 @@ export default function CheckInPage() {
         <header className="app-nav">
           <Link className="back-link" href="/"><ArrowLeft /> Back to CRYCODILE</Link>
           <div className="header-actions">
-            <span className="preview-label"><span className="live-dot" />Preview Data</span>
+            <span className="network"><span className="live-dot" />NEAR TESTNET</span>
             <button className="button header-wallet" onClick={() => setConnected((current) => !current)}>
               <Wallet />{connected ? "Wallet Connected" : "Connect Wallet"}
             </button>
@@ -51,11 +57,11 @@ export default function CheckInPage() {
               <div className="checkin-target-copy">
                 <span className="section-kicker">TODAY&apos;S COMMUNITY TARGET</span>
                 <h2 id="checkin-target-heading">Keep the streak alive.</h2>
-                <p className="card-description">The daily target is shared by every active checker on NEAR.</p>
+                <p className="card-description">The daily target of {target} check-ins is shared by every active checker on NEAR.</p>
               </div>
               <div className="checkin-target-progress">
-                <div className="progress-track"><div className="progress-fill" style={{ width: "72%" }} /></div>
-                <div className="progress-meta"><span>72 checkers</span><span>100 target</span></div>
+                <div className="progress-track"><div className="progress-fill" style={{ width: `${progressPercent}%` }} /></div>
+                <div className="progress-meta"><span>{todayCheckins} check-ins</span><span>{target} target</span></div>
               </div>
             </div>
 
@@ -77,7 +83,7 @@ export default function CheckInPage() {
           <section className="glass-card checkin-wallet-panel" aria-label="Wallet summary">
             <div className="checkin-metrics">
               <div className="checkin-metric"><span>Wallet status</span><strong>{connected ? "Connected" : "Not connected"}</strong><small>{connected ? "0x8C...CROC" : "Connect to begin"}</small></div>
-              <div className="checkin-metric"><span>Current streak</span><strong>{streak} days</strong><small>+1 if you check in today</small></div>
+              <div className="checkin-metric"><span>Current streak</span><strong>{currentStreak !== "Unavailable" ? `${currentStreak} days` : "0 days"}</strong><small>+1 if you check in today</small></div>
               <div className="checkin-metric"><span>Pending rewards</span><strong>{pending.toLocaleString()}</strong><small>CROC available to claim</small></div>
               <div className="checkin-metric"><span>Wallet balance</span><strong>{balance.toLocaleString()}</strong><small>CROC</small></div>
             </div>
@@ -108,8 +114,8 @@ export default function CheckInPage() {
           </section>
         </div>
 
-        <p className="checkin-description">Your participation keeps the community streak alive. Connect a wallet to interact with the mock protocol.</p>
-        <footer className="site-footer"><span>$CROC / CHECK-IN</span><span>Mock interaction layer</span></footer>
+        <p className="checkin-description">Your participation keeps the community streak alive. 5 check-ins every 24 hours protect the treasury and mint daily rewards.</p>
+        <footer className="site-footer"><span>$CROC / CHECK-IN</span><span>Testnet only. Not audited. No price shown.</span></footer>
       </div>
     </main>
   )
