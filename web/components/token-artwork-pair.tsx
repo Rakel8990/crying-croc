@@ -73,7 +73,7 @@ export function TokenArtworkPair() {
               />
             </span>
             <span className="token-art-face token-art-face--back" aria-hidden="true">
-              <span className="token-art-metal">
+              <span className="token-art-black-back">
                 <span className="token-art-back-symbol">{token.symbol.toLowerCase()}</span>
               </span>
             </span>
