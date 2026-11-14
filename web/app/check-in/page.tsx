@@ -2,12 +2,14 @@
 
 import Link from "next/link"
 import { ArrowLeft, Check, CircleDollarSign, LoaderCircle, Wallet } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useCrocData } from "../../lib/contract"
+import { getNearWallet, connectWallet, disconnectWallet, executeCheckIn } from "../../lib/near-wallet"
 
 export default function CheckInPage() {
   const { currentStreak, todayCheckins, target } = useCrocData()
   const [connected, setConnected] = useState(false)
+  const [accountId, setAccountId] = useState<string | null>(null)
   const [checkedIn, setCheckedIn] = useState(false)
   const [loading, setLoading] = useState(false)
   const [streak, setStreak] = useState(0)
@@ -19,13 +21,56 @@ export default function CheckInPage() {
   const checkinsNum = Number(todayCheckins) || 0
   const progressPercent = Math.min(100, Math.round((checkinsNum / targetNum) * 100))
 
-  const run = (action: () => void, success: string) => {
+  useEffect(() => {
+    getNearWallet().then((wallet) => {
+      if (wallet && wallet.isSignedIn()) {
+        const id = wallet.getAccountId()
+        setAccountId(id)
+        setConnected(true)
+      }
+    })
+  }, [])
+
+  const handleWalletToggle = async () => {
+    if (connected) {
+      await disconnectWallet()
+    } else {
+      await connectWallet()
+    }
+  }
+
+  const handleCheckIn = async () => {
+    if (!connected) return
+    setLoading(true)
+    setMessage("")
+
+    if (accountId) {
+      const res = await executeCheckIn()
+      setLoading(false)
+      setMessage(res.message)
+      if (res.success) {
+        setCheckedIn(true)
+        setPending((prev) => prev + 320)
+      }
+    } else {
+      window.setTimeout(() => {
+        setCheckedIn(true)
+        setStreak((current) => current + 1)
+        setPending((current) => current + 320)
+        setLoading(false)
+        setMessage("Check-in confirmed.")
+      }, 1000)
+    }
+  }
+
+  const handleClaim = () => {
     setLoading(true)
     setMessage("")
     window.setTimeout(() => {
-      action()
+      setBalance((current) => current + pending)
+      setPending(0)
       setLoading(false)
-      setMessage(success)
+      setMessage("Rewards claimed and moved to wallet balance.")
     }, 1000)
   }
 
@@ -40,8 +85,8 @@ export default function CheckInPage() {
           <Link className="back-link" href="/"><ArrowLeft /> Back to CRYCODILE</Link>
           <div className="header-actions">
             <span className="network"><span className="live-dot" />NEAR TESTNET</span>
-            <button className="button header-wallet" onClick={() => setConnected((current) => !current)}>
-              <Wallet />{connected ? "Wallet Connected" : "Connect Wallet"}
+            <button className="button header-wallet" onClick={handleWalletToggle}>
+              <Wallet />{connected ? (accountId ? accountId : "Wallet Connected") : "Connect Wallet"}
             </button>
           </div>
         </header>
@@ -68,11 +113,7 @@ export default function CheckInPage() {
             <button
               className="button secondary"
               disabled={!connected || checkedIn || loading}
-              onClick={() => run(() => {
-                setCheckedIn(true)
-                setStreak((current) => current + 1)
-                setPending((current) => current + 320)
-              }, "Check-in confirmed. Reward added to pending balance.")}
+              onClick={handleCheckIn}
             >
               {loading ? <LoaderCircle className="spin" /> : <Check />}
               {loading ? "Processing..." : checkedIn ? "Checked In Today" : "Check In"}
@@ -82,7 +123,7 @@ export default function CheckInPage() {
 
           <section className="glass-card checkin-wallet-panel" aria-label="Wallet summary">
             <div className="checkin-metrics">
-              <div className="checkin-metric"><span>Wallet status</span><strong>{connected ? "Connected" : "Not connected"}</strong><small>{connected ? "0x8C...CROC" : "Connect to begin"}</small></div>
+              <div className="checkin-metric"><span>Wallet status</span><strong>{connected ? "Connected" : "Not connected"}</strong><small>{connected ? (accountId || "0x8C...CROC") : "Connect to begin"}</small></div>
               <div className="checkin-metric"><span>Current streak</span><strong>{currentStreak !== "Unavailable" ? `${currentStreak} days` : "0 days"}</strong><small>+1 if you check in today</small></div>
               <div className="checkin-metric"><span>Pending rewards</span><strong>{pending.toLocaleString()}</strong><small>CROC available to claim</small></div>
               <div className="checkin-metric"><span>Wallet balance</span><strong>{balance.toLocaleString()}</strong><small>CROC</small></div>
@@ -90,10 +131,7 @@ export default function CheckInPage() {
             <button
               className="button"
               disabled={!connected || pending === 0 || loading}
-              onClick={() => run(() => {
-                setBalance((current) => current + pending)
-                setPending(0)
-              }, "Rewards claimed and moved to wallet balance.")}
+              onClick={handleClaim}
             >
               <CircleDollarSign /> Claim Rewards
             </button>
