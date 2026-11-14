@@ -108,6 +108,35 @@ export async function fetchUserBalance(accountId: string): Promise<string> {
   }
 }
 
+function createFunctionCallAction(
+  methodName: string,
+  args: Record<string, any> = {},
+  gas: string = "100000000000000",
+  deposit: string = "0"
+) {
+  const jsonStr = JSON.stringify(args)
+  const bytes =
+    typeof window !== "undefined" && (window as any).Buffer
+      ? (window as any).Buffer.from(jsonStr)
+      : new TextEncoder().encode(jsonStr)
+
+  return {
+    functionCall: {
+      methodName,
+      args: bytes,
+      gas: BigInt(gas),
+      deposit: BigInt(deposit),
+    },
+    type: "FunctionCall",
+    params: {
+      methodName,
+      args,
+      gas,
+      deposit,
+    },
+  } as any
+}
+
 export async function executeCheckIn(): Promise<{ success: boolean; txHash?: string; message: string }> {
   try {
     const selector = await getWalletSelector()
@@ -130,26 +159,19 @@ export async function executeCheckIn(): Promise<{ success: boolean; txHash?: str
 
     if (!storage) {
       // NEP-141 storage deposit: 0.00125 NEAR
-      actions.push({
-        type: "FunctionCall",
-        params: {
-          methodName: "storage_deposit",
-          args: { registration_only: true },
-          gas: "30000000000000",
-          deposit: "1250000000000000000000",
-        },
-      })
+      actions.push(
+        createFunctionCallAction(
+          "storage_deposit",
+          { registration_only: true },
+          "30000000000000",
+          "1250000000000000000000"
+        )
+      )
     }
 
-    actions.push({
-      type: "FunctionCall",
-      params: {
-        methodName: "check_in",
-        args: {},
-        gas: "100000000000000",
-        deposit: "0",
-      },
-    })
+    actions.push(
+      createFunctionCallAction("check_in", {}, "100000000000000", "0")
+    )
 
     const result = await wallet.signAndSendTransaction({
       receiverId: CONTRACT_ID,
@@ -196,15 +218,7 @@ export async function executeClaim(): Promise<{ success: boolean; txHash?: strin
     const result = await wallet.signAndSendTransaction({
       receiverId: CONTRACT_ID,
       actions: [
-        {
-          type: "FunctionCall",
-          params: {
-            methodName: "claim",
-            args: {},
-            gas: "100000000000000",
-            deposit: "0",
-          },
-        },
+        createFunctionCallAction("claim", {}, "100000000000000", "0"),
       ],
     })
 
