@@ -3,131 +3,167 @@
 import { CONTRACT_ID } from "./config"
 import { callViewMethod } from "./contract"
 
-export interface NearWalletState {
-  accountId: string | null
-  isConnected: boolean
-  isRegistered: boolean
-  hasCheckedInToday: boolean
-  loading: boolean
+export function getInjectedMeteor(): any {
+  if (typeof window === "undefined") return null
+  return (window as any).meteorWallet || (window as any).near || null
 }
 
-let nearInstance: any = null
-let walletInstance: any = null
-
-export async function loadNearApi(): Promise<any> {
+export async function waitForInjectedWallet(timeoutMs = 1500): Promise<any> {
   if (typeof window === "undefined") return null
-  if ((window as any).nearApi) return (window as any).nearApi
+  const existing = getInjectedMeteor()
+  if (existing) return existing
 
   return new Promise((resolve) => {
-    const existing = document.querySelector('script[src*="near-api-js"]')
-    if (existing) {
-      if ((window as any).nearApi) {
-        resolve((window as any).nearApi)
-        return
+    let waited = 0
+    const interval = setInterval(() => {
+      waited += 100
+      const wallet = getInjectedMeteor()
+      if (wallet || waited >= timeoutMs) {
+        clearInterval(interval)
+        resolve(wallet)
       }
-      existing.addEventListener("load", () => resolve((window as any).nearApi))
-      existing.addEventListener("error", () => resolve(null))
-      return
-    }
-
-    const script = document.createElement("script")
-    script.src = "https://cdn.jsdelivr.net/npm/near-api-js@2.1.4/dist/near-api-js.min.js"
-    script.async = true
-    script.onload = () => resolve((window as any).nearApi)
-    script.onerror = () => resolve(null)
-    document.head.appendChild(script)
+    }, 100)
   })
 }
 
-export async function getNearWallet(): Promise<any> {
-  if (typeof window === "undefined") return null
-  if (walletInstance) return walletInstance
-
-  const nearApi = await loadNearApi()
-  if (!nearApi) return null
+export async function getConnectedAccountId(): Promise<string | null> {
+  const meteor = await waitForInjectedWallet(500)
+  if (!meteor) return null
 
   try {
-    const connectionConfig = {
-      networkId: "testnet",
-      keyStore: new nearApi.keyStores.BrowserLocalStorageKeyStore(),
-      nodeUrl: "https://rpc.testnet.near.org",
-      walletUrl: "https://testnet.mynearwallet.com",
-      helperUrl: "https://helper.testnet.near.org",
-      explorerUrl: "https://testnet.nearblocks.io",
+    if (typeof meteor.getAccountId === "function") {
+      const id = meteor.getAccountId()
+      if (id) return id
     }
-
-    nearInstance = await nearApi.connect(connectionConfig)
-    walletInstance = new nearApi.WalletConnection(nearInstance, "crying-croc")
-    return walletInstance
+    if (typeof meteor.isSignedIn === "function" && meteor.isSignedIn()) {
+      return meteor.getAccountId ? meteor.getAccountId() : null
+    }
+    if (meteor.accountId) return meteor.accountId
   } catch (e) {
-    console.error("Failed to initialize NEAR wallet:", e)
-    return null
+    console.error("Error reading account from Meteor Wallet:", e)
   }
+  return null
 }
 
 export async function connectWallet(): Promise<void> {
-  const wallet = await getNearWallet()
-  if (!wallet) return
-  wallet.requestSignIn({
-    contractId: CONTRACT_ID,
-    title: "Crying Croc",
-  })
+  const meteor = await waitForInjectedWallet(1000)
+
+  if (meteor) {
+    try {
+      if (typeof meteor.requestSignIn === "function") {
+        await meteor.requestSignIn({
+          contractId: CONTRACT_ID,
+          title: "Crying Croc",
+        })
+        return
+      }
+      if (typeof meteor.signIn === "function") {
+        await meteor.signIn({
+          contractId: CONTRACT_ID,
+        })
+        return
+      }
+    } catch (e) {
+      console.error("Meteor sign-in error:", e)
+    }
+  }
+
+  // Fallback: If extension not installed in browser, open Meteor Wallet Testnet web
+  window.open("https://wallet.testnet.meteorwallet.app/", "_blank")
 }
 
 export async function disconnectWallet(): Promise<void> {
-  const wallet = await getNearWallet()
-  if (!wallet) return
-  wallet.signOut()
+  const meteor = getInjectedMeteor()
+  if (meteor && typeof meteor.signOut === "function") {
+    try {
+      meteor.signOut()
+    } catch {}
+  }
   window.location.reload()
 }
 
 export async function registerStorage(): Promise<void> {
-  const wallet = await getNearWallet()
-  if (!wallet || !wallet.isSignedIn()) return
-  const account = wallet.account()
+  const meteor = getInjectedMeteor()
+  if (!meteor) return
+
   // 0.00125 NEAR required for storage deposit
-  await account.functionCall({
-    contractId: CONTRACT_ID,
-    methodName: "storage_deposit",
-    args: {},
-    gas: "30000000000000",
-    attachedDeposit: "1250000000000000000000",
-  })
+  const depositYocto = "1250000000000000000000"
+
+  if (typeof meteor.signAndSendTransaction === "function") {
+    await meteor.signAndSendTransaction({
+      receiverId: CONTRACT_ID,
+      actions: [
+        {
+          methodName: "storage_deposit",
+          args: {},
+          gas: "30000000000000",
+          deposit: depositYocto,
+        },
+      ],
+    })
+  } else if (meteor.account && typeof meteor.account().functionCall === "function") {
+    await meteor.account().functionCall({
+      contractId: CONTRACT_ID,
+      methodName: "storage_deposit",
+      args: {},
+      gas: "30000000000000",
+      attachedDeposit: depositYocto,
+    })
+  }
 }
 
 export async function executeCheckIn(): Promise<{ success: boolean; message: string }> {
-  const wallet = await getNearWallet()
-  if (!wallet || !wallet.isSignedIn()) {
-    return { success: false, message: "Please connect your NEAR testnet wallet first." }
+  const meteor = getInjectedMeteor()
+  const accountId = await getConnectedAccountId()
+
+  if (!meteor || !accountId) {
+    return { success: false, message: "Please connect your Meteor Wallet extension first." }
   }
 
-  const accountId = wallet.getAccountId()
-  const account = wallet.account()
-
-  // Verify storage registration
+  // 1. Check if account registered storage
   const storage = await callViewMethod<{ total: string; available: string } | null>(
     "storage_balance_of",
     { account_id: accountId }
   )
 
   if (!storage) {
-    await registerStorage()
-    return { success: false, message: "Redirecting to MyNearWallet for one-time storage registration (0.00125 NEAR)..." }
+    try {
+      await registerStorage()
+      return { success: false, message: "Storage registered! Please click Check In again to complete check-in." }
+    } catch (e: any) {
+      return { success: false, message: "Storage deposit required (0.00125 NEAR): " + (e?.message || e) }
+    }
   }
 
+  // 2. Execute on-chain check_in()
   try {
-    const result = await account.functionCall({
-      contractId: CONTRACT_ID,
-      methodName: "check_in",
-      args: {},
-      gas: "100000000000000", // 100 Tgas
-    })
+    let result: any = null
+    if (typeof meteor.signAndSendTransaction === "function") {
+      result = await meteor.signAndSendTransaction({
+        receiverId: CONTRACT_ID,
+        actions: [
+          {
+            methodName: "check_in",
+            args: {},
+            gas: "100000000000000", // 100 TGas
+            deposit: "0",
+          },
+        ],
+      })
+    } else if (meteor.account && typeof meteor.account().functionCall === "function") {
+      result = await meteor.account().functionCall({
+        contractId: CONTRACT_ID,
+        methodName: "check_in",
+        args: {},
+        gas: "100000000000000",
+      })
+    }
 
-    const txHash = result?.transaction?.hash || result?.transaction_outcome?.id
+    const txHash = result?.transaction?.hash || result?.transaction_outcome?.id || (typeof result === "string" ? result : null)
     return {
       success: true,
       message: txHash
-        ? `Check-in confirmed on NEAR Testnet! Tx: ${txHash.slice(0, 8)}...`
+        ? `Check-in confirmed on NEAR Testnet! Tx: ${txHash.slice(0, 10)}...`
         : "Check-in confirmed on NEAR Testnet!",
     }
   } catch (err: any) {
@@ -135,6 +171,6 @@ export async function executeCheckIn(): Promise<{ success: boolean; message: str
     if (msg.includes("already checked in today")) {
       return { success: false, message: "You have already checked in today!" }
     }
-    return { success: false, message: "Transaction failed: " + msg }
+    return { success: false, message: "Check-in failed: " + msg }
   }
 }

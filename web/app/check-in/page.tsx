@@ -4,7 +4,7 @@ import Link from "next/link"
 import { ArrowLeft, Check, CircleDollarSign, LoaderCircle, Wallet } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useCrocData } from "../../lib/contract"
-import { getNearWallet, connectWallet, disconnectWallet, executeCheckIn } from "../../lib/near-wallet"
+import { getConnectedAccountId, connectWallet, disconnectWallet, executeCheckIn } from "../../lib/near-wallet"
 
 export default function CheckInPage() {
   const { currentStreak, todayCheckins, target } = useCrocData()
@@ -22,9 +22,8 @@ export default function CheckInPage() {
   const progressPercent = Math.min(100, Math.round((checkinsNum / targetNum) * 100))
 
   useEffect(() => {
-    getNearWallet().then((wallet) => {
-      if (wallet && wallet.isSignedIn()) {
-        const id = wallet.getAccountId()
+    getConnectedAccountId().then((id) => {
+      if (id) {
         setAccountId(id)
         setConnected(true)
       }
