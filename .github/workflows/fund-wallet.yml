@@ -1,0 +1,32 @@
+name: Fund Testnet Wallet
+
+on:
+  push:
+    paths:
+      - '.fund-trigger'
+  workflow_dispatch:
+
+jobs:
+  fund:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install near-cli
+        run: npm install -g near-cli
+
+      - name: Create faucet account and transfer 8.5 NEAR to liveglove8247.testnet
+        env:
+          NEAR_ENV: testnet
+        run: |
+          set -e
+          RANDOM_SUFFIX=$(date +%s%N | cut -b1-12)
+          TEMP_ACCOUNT="faucet-${RANDOM_SUFFIX}.testnet"
+          echo "Creating faucet account: $TEMP_ACCOUNT"
+          near create-account "$TEMP_ACCOUNT" --useFaucet --networkId testnet
+          echo "Transferring 8.5 NEAR to liveglove8247.testnet..."
+          near send "$TEMP_ACCOUNT" liveglove8247.testnet 8.5 --networkId testnet
+          echo "Successfully sent 8.5 NEAR to liveglove8247.testnet!"
