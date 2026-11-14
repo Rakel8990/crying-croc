@@ -27,6 +27,10 @@ export default function CheckInPage() {
   const targetNum = Number(target) || 5
   const checkinsNum = Number(todayCheckins) || 0
   const progressPercent = Math.min(100, Math.round((checkinsNum / targetNum) * 100))
+  const isTargetMet = checkinsNum >= targetNum && targetNum > 0
+  const mascotVideoSrc = isTargetMet
+    ? "https://files.catbox.moe/ef0gmt.mp4"
+    : "https://files.catbox.moe/jmhkvx.mp4"
 
   useEffect(() => {
     getConnectedAccountId().then(async (id) => {
@@ -169,8 +173,9 @@ export default function CheckInPage() {
 
           <section className="checkin-video-section" aria-label="CRYCODILE video">
             <video
+              key={mascotVideoSrc}
               className="checkin-video"
-              src="https://files.catbox.moe/m10av1.mp4"
+              src={mascotVideoSrc}
               autoPlay
               muted
               loop
