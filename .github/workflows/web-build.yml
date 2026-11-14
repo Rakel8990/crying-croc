@@ -1,0 +1,124 @@
+name: Web build and typecheck
+
+on:
+  push:
+    branches:
+      - web-wiring
+    paths:
+      - 'web/**'
+  pull_request:
+    paths:
+      - 'web/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Check out the ci-logs branch
+        uses: actions/checkout@v4
+        with:
+          ref: ci-logs
+          path: ci-logs
+
+      - name: Run actionlint v1.7.12
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$GITHUB_WORKSPACE:/repo" --workdir /repo rhysd/actionlint:1.7.12
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies and build web app
+        id: build
+        shell: bash
+        working-directory: web
+        run: |
+          set +e
+          output_file="$RUNNER_TEMP/croc-web-build.log"
+          : > "$output_file"
+
+          echo "Running npm ci..." | tee -a "$output_file"
+          npm ci 2>&1 | tee -a "$output_file"
+          ci_status=${PIPESTATUS[0]}
+
+          tsc_status=0
+          if [ -f "tsconfig.json" ]; then
+            echo "Running npx tsc --noEmit..." | tee -a "$output_file"
+            npx tsc --noEmit 2>&1 | tee -a "$output_file"
+            tsc_status=${PIPESTATUS[0]}
+          fi
+
+          build_status=0
+          if [ "$ci_status" -eq 0 ] && [ "$tsc_status" -eq 0 ]; then
+            echo "Running npm run build..." | tee -a "$output_file"
+            npm run build 2>&1 | tee -a "$output_file"
+            build_status=${PIPESTATUS[0]}
+          fi
+
+          if [ "$ci_status" -eq 0 ] && [ "$tsc_status" -eq 0 ] && [ "$build_status" -eq 0 ]; then
+            conclusion="SUCCESS (npm ci: 0, tsc: 0, build: 0)"
+          else
+            conclusion="FAIL (npm ci: $ci_status, tsc: $tsc_status, build: $build_status)"
+          fi
+
+          echo "CROC_WEB_BUILD_CONCLUSION=$conclusion" >> "$GITHUB_ENV"
+          if [ "$ci_status" -ne 0 ] || [ "$tsc_status" -ne 0 ] || [ "$build_status" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Publish web build log to ci-logs
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_file="$RUNNER_TEMP/croc-web-build.log"
+          report_dir="$GITHUB_WORKSPACE/ci-logs/$GITHUB_SHA/web-build"
+          mkdir -p "$report_dir"
+          report_file="$report_dir/build.log"
+          log_repo="$GITHUB_WORKSPACE/ci-logs"
+
+          {
+            echo "Commit SHA: $GITHUB_SHA"
+            echo "UTC time: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo "Final conclusion: ${CROC_WEB_BUILD_CONCLUSION:-FAIL}"
+            echo "Last 80 lines of web build output:"
+            if [ -f "$output_file" ]; then
+              tail -n 80 "$output_file"
+            else
+              echo "Web build output was not created."
+            fi
+          } > "$report_file"
+
+          git -C "$log_repo" config user.name "github-actions[bot]"
+          git -C "$log_repo" config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git -C "$log_repo" add "$GITHUB_SHA/web-build/build.log"
+          if ! git -C "$log_repo" diff --cached --quiet; then
+            git -C "$log_repo" commit --quiet -m "Add web build log for $GITHUB_SHA"
+            pushed=false
+            for attempt in 1 2 3; do
+              if git -C "$log_repo" push origin HEAD:ci-logs; then
+                pushed=true
+                break
+              fi
+              if (( attempt < 3 )); then
+                git -C "$log_repo" fetch origin ci-logs
+                git -C "$log_repo" rebase origin/ci-logs
+                sleep "$((attempt * 2))"
+              fi
+            done
+            [[ "$pushed" == true ]] || { echo "Could not publish the web build log after 3 push attempts."; exit 1; }
+          fi

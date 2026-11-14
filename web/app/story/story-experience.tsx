@@ -3,9 +3,11 @@
 import { useEffect, useRef, useState } from "react"
 
 const parameters = [
-  ["Maximum supply", "1B CROC"],
-  ["Initial treasury", "300M CROC"],
-  ["Target", "Daily"],
+  ["Maximum supply", "1,000,000,000 CROC"],
+  ["Initial treasury", "300,000,000 CROC"],
+  ["Emission pool", "700,000,000 CROC"],
+  ["Daily target", "5 check-ins / 24 hours"],
+  ["Admin keys", "Deleted (0 access keys)"],
   ["Presale", "None"],
   ["Team allocation", "None"],
 ]
@@ -14,32 +16,32 @@ const chapters = [
   {
     number: "01",
     title: "THE COMMUNITY MAKES THE RULES WORK.",
-    copy: "The community decides what happens next. Every check-in brings the pond closer to its daily goal.",
+    copy: "The community decides what happens next. Every check-in brings the pond closer to its daily goal of 5 check-ins.",
   },
   {
     number: "02",
     title: "EVERY DAY IS A NEW ROUND.",
-    copy: "One day. One target. Every registered wallet gets one chance to show up.",
+    copy: "One 24-hour day. Target 5. Every registered testnet wallet gets one check-in per day.",
   },
   {
     number: "03",
     title: "NOBODY WINS ALONE.",
-    copy: "Hit the daily target. Create new CROC. Share 90% among the day’s checkers.",
+    copy: "Hit target 5: 0.5% leaves the pool. Share 90% among the day’s checkers and 10% to treasury. Milestones at 7, 15, 25, 100 days.",
   },
   {
     number: "04",
     title: "NO CHECK-INS. NO MERCY.",
-    copy: "Miss the target. Croc cries. 5% of the treasury gets burned.",
+    copy: "Miss the target: Croc cries. 5% of the treasury gets burned and the streak resets to 0.",
   },
   {
     number: "05",
     title: "NOBODY HOLDS THE KEYS.",
-    copy: "No admin. No changing the rules. What’s written in the contract stays.",
+    copy: "No admin keys. No upgrade path. What’s written in the deployed smart contract stays forever.",
   },
   {
     number: "06",
     title: "ON-CHAIN RECORD.",
-    copy: "Every check-in. Every reward. Every burn. The blockchain keeps the receipts.",
+    copy: "Every check-in, mint, burn, claim, milestone, and streak change is recorded on NEAR testnet.",
   },
   {
     number: "07",
@@ -85,7 +87,7 @@ export function StoryExperience() {
         <div className="home-story-intro-copy">
           <span className="section-kicker">THE CRYCODILE STORY</span>
           <h2 id="story-heading">A community built<br /><span>on showing up.</span></h2>
-          <p>One daily check-in. One shared goal. A different ending each day.</p>
+          <p>Target 5. 24-hour days. A different ending each day on NEAR Testnet.</p>
         </div>
 
         <div className="home-story-parameters-card" role="group" aria-labelledby="home-story-parameters-title">

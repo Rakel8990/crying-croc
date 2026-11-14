@@ -2,10 +2,30 @@ import Link from "next/link"
 import { ArrowLeft, Check, Flame, Gauge, ShieldCheck, Sparkles } from "lucide-react"
 
 const mechanics = [
-  { icon: Check, number: "01", title: "Check in daily", copy: "Connect your wallet and make one simple daily check-in to keep your streak alive." },
-  { icon: Gauge, number: "02", title: "Build momentum", copy: "Every consecutive check-in moves the community closer to the shared reward target." },
-  { icon: ShieldCheck, number: "03", title: "Earn together", copy: "When the target is reached, active checkers receive fresh $CROC rewards." },
-  { icon: Flame, number: "04", title: "Miss the target", copy: "If the community misses, 5% of the treasury burns and the streak resets." },
+  {
+    icon: Check,
+    number: "01",
+    title: "Check in daily",
+    copy: "Register a testnet wallet and make one check-in per 24-hour day to keep the community streak alive.",
+  },
+  {
+    icon: Gauge,
+    number: "02",
+    title: "Build momentum",
+    copy: "Every check-in moves the community closer to the shared daily target of 5 check-ins every 24 hours.",
+  },
+  {
+    icon: ShieldCheck,
+    number: "03",
+    title: "Earn together",
+    copy: "When target 5 is reached, 0.5% leaves the emission pool: 90% is shared among checkers, and 10% enters the treasury.",
+  },
+  {
+    icon: Flame,
+    number: "04",
+    title: "Miss the target",
+    copy: "If the community misses target 5, 5% of the treasury burns and the streak resets to 0. No new tokens are minted.",
+  },
 ]
 
 export default function MechanicPage() {
@@ -21,7 +41,7 @@ export default function MechanicPage() {
       <section className="mechanic-hero">
         <span className="eyebrow"><span /> THE MECHANIC</span>
         <h1>SHOW UP.<br /><span>GET REWARDED.</span></h1>
-        <p>The $CROC streak engine is simple: daily proof, shared momentum, and a little pain when the community disappears.</p>
+        <p>The $CROC streak engine is simple: target 5, 24-hour days, shared momentum, and a 5% treasury burn when the target is missed.</p>
       </section>
       <section className="mechanic-grid" aria-label="How the $CROC mechanic works">
         {mechanics.map(({ icon: Icon, number, title, copy }) => (
@@ -32,7 +52,14 @@ export default function MechanicPage() {
           </article>
         ))}
       </section>
-      <div className="mechanic-note"><Sparkles /><span>$CROC on NEAR. One streak. One community.</span></div>
+      <div className="mechanic-note">
+        <Sparkles />
+        <span>Milestones at streaks 7, 15, 25, 100 move 1%, 1.5%, 2.5%, 5% of treasury to escrow (paid once each, moved not minted).</span>
+      </div>
+      <footer className="site-footer">
+        <span>$CROC / THE MECHANIC</span>
+        <span>Testnet only. Not audited. No price shown.</span>
+      </footer>
     </main>
   )
 }
