@@ -73,9 +73,13 @@ export function TokenArtworkPair() {
               />
             </span>
             <span className="token-art-face token-art-face--back" aria-hidden="true">
-              <span className="token-art-black-back">
-                <span className="token-art-back-symbol">{token.symbol.toLowerCase()}</span>
-              </span>
+              <img
+                src={token.source}
+                alt=""
+                className="token-art-image"
+                loading="eager"
+                draggable={false}
+              />
             </span>
           </motion.span>
         </motion.figure>
