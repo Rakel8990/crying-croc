@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","result":{"block_hash":"5YRnBtXx63YWuWfp8WiVWJswqE5ZrVpZws7Zy5rG2GgC","block_height":277626010,"logs":[],"result":[34,48,34]},"id":"croc-final-view"}

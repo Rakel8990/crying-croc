@@ -1,0 +1,43 @@
+├  Unsigned transaction:
+│    signer_id:    croc-final-43570992494-1.testnet
+│    receiver_id:  croc-final-43570992494-1.testnet
+│    actions:
+│       -- deploy code <3XFpskxNZx2dnewRdSZWfC94ewP1Aj79YBx5NyBF5kRG> to a account <croc-final-43570992494-1.testnet>
+│       -- function call:      
+│                       method name:  new
+│                       args:         {
+│                                       "day_length_ns": 86400000000000,
+│                                       "target": 5
+│                                     }
+│                       gas:          100.0 Tgas
+│                       deposit:      0 NEAR
+│     [0m
+├  Your transaction was signed successfully.
+│    Public key: ed25519:AxzBADrsCEzDK3qLFY5wSd8Rzbd1HJtWmZ6zUPVP9FMB
+│    Signature:  ed25519:zzJ1Ff7NofRypNo5NXLeCBB1zHbWwq1FJiPtcXUkYzkxmxCN7EpNT1sJBFNy4wQJTykPR3NYfpA7rmVHPnz6hGC
+│     [0m
+├  Transaction Execution Info:
+│    Gas used: 27.6 Tgas
+│    Transaction fee: 0.0027317495175142 NEAR
+│    Transaction ID: 8BNW7DpPPDQwQtk7mT5G9KtjKbV21f2ioVwwCMrcgsGP
+│    To see the transaction in the transaction explorer, please open this url in your browser:
+│    https://explorer.testnet.near.org/transactions/8BNW7DpPPDQwQtk7mT5G9KtjKbV21f2ioVwwCMrcgsGP
+│     [0m
+├  Function execution logs:
+│    [36mLogs [croc-final-43570992494-1.testnet]:[39m
+│      EVENT_JSON:{"standard":"nep141","version":"1.0.0","event":"ft_mint","data":[{"owner_id":"croc-final-43570992494-1.testnet","amount":"300000000000000000000000000","memo":"initial burn-only treasury"}]}
+│    [36mLogs [croc-final-43570992494-1.testnet]:[39m   [2mNo logs[0m
+│     [0m
+├  Function execution return value:
+│    Empty return value
+│     [0m
+
+Contract code has been successfully deployed.
+The "new" call to <croc-final-43570992494-1.testnet> on behalf of <croc-final-43570992494-1.testnet> succeeded.
+
+
+
+
+Here is your console command if you need to script it or re-run:
+    [33m/home/runner/work/_temp/croc-final-cli-home/bin/near contract deploy croc-final-43570992494-1.testnet use-file /home/runner/work/crying-croc/crying-croc/target/wasm32-unknown-unknown/release/crying_croc.wasm with-init-call new json-args '{"day_length_ns":86400000000000,"target":5}' prepaid-gas '100.0 Tgas' attached-deposit '0 NEAR' network-config testnet sign-with-access-key-file /home/runner/work/_temp/croc-final-keys/contract/9410c665c2fbab4fe12107a2f7501317ad707d5381924a72d16dac9966dc1aaa.json send[39m
+

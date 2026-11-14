@@ -1,0 +1,2 @@
+Note: `near` CLI configuration is stored in "/home/runner/.config/near-cli/config.toml"
+near-cli-rs 0.31.1

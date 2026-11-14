@@ -1,0 +1,7 @@
+
+The file "/home/runner/work/_temp/croc-final-keys/contract/9410c665c2fbab4fe12107a2f7501317ad707d5381924a72d16dac9966dc1aaa.json" was saved successfully
+
+
+Here is your console command if you need to script it or re-run:
+    [33m/home/runner/work/_temp/croc-final-cli-home/bin/near account create-account fund-later use-auto-generation save-to-folder /home/runner/work/_temp/croc-final-keys/contract[39m
+

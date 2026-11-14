@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","result":{"amount":"9997268250482485800000000","block_hash":"mCVyiMfas1XmYKFoPZS9qqqrbrt8XpT7dFEtJ5Q8Ast","block_height":277626015,"code_hash":"3XFpskxNZx2dnewRdSZWfC94ewP1Aj79YBx5NyBF5kRG","locked":"0","storage_paid_at":0,"storage_usage":339771},"id":"croc-final-account"}
