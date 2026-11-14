@@ -30,7 +30,7 @@ export default function CheckInPage() {
   const isTargetMet = checkinsNum >= targetNum && targetNum > 0
   const mascotVideoSrc = isTargetMet
     ? "https://files.catbox.moe/ef0gmt.mp4"
-    : "https://files.catbox.moe/cw7oab.mp4"
+    : "https://files.catbox.moe/jmhkvx.mp4"
 
   useEffect(() => {
     getConnectedAccountId().then(async (id) => {
@@ -171,11 +171,10 @@ export default function CheckInPage() {
             </button>
           </section>
 
-          <section className="checkin-video-section" aria-label="CRYCODILE video">
+          <section className="checkin-video-section" aria-label="CRYCODILE video" style={{ maxWidth: "560px", margin: "0 auto" }}>
             <video
               key={mascotVideoSrc}
               className="checkin-video"
-              src={mascotVideoSrc}
               autoPlay
               muted
               loop
@@ -183,8 +182,14 @@ export default function CheckInPage() {
               preload="metadata"
               controls
               aria-label="CRYCODILE community video"
-            />
+            >
+              <source src={mascotVideoSrc} type="video/mp4" />
+              {!isTargetMet && <source src="https://files.catbox.moe/cw7oab.mp4" type="video/mp4" />}
+            </video>
           </section>
+          <p style={{ marginTop: "12px", textAlign: "center", fontSize: "13px", color: "var(--muted)", lineHeight: 1.5, maxWidth: "560px", marginInline: "auto" }}>
+            <span style={{ color: "var(--bright)", fontWeight: 600 }}>Live On-Chain State:</span> The Croc is currently crying because today&apos;s community target of {target} check-ins has not been reached yet ({todayCheckins} / {target}). Once {target} check-ins are recorded on NEAR, the contract marks the day successful, rewards unlock, and the Croc switches to chilling mode!
+          </p>
         </div>
 
         <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
