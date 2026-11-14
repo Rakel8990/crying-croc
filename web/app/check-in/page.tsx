@@ -191,15 +191,13 @@ export default function CheckInPage() {
           <p className="checkin-description" style={{ margin: 0 }}>
             Your participation keeps the community streak alive. 5 check-ins every 24 hours protect the treasury and mint daily rewards.
           </p>
-          <a
+          <Link
             className="button secondary"
-            href={`https://testnet.nearblocks.io/address/${CONTRACT_ID}#contract-methods`}
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/protocol-stats#activity"
             style={{ fontSize: "12px", padding: "8px 14px", textDecoration: "none" }}
           >
-            <Check /> View Contract on NEARBlocks <ExternalLink style={{ width: "14px", height: "14px" }} />
-          </a>
+            <Check /> View protocol activity <ExternalLink style={{ width: "14px", height: "14px" }} />
+          </Link>
         </div>
         <footer className="site-footer"><span>$CROC / CHECK-IN</span><span>Testnet only. Not audited. No price shown.</span></footer>
       </div>

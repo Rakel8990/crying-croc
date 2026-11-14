@@ -80,6 +80,12 @@ export default function ProtocolStatsPage() {
                 <div className="bar"><i style={{ width: `${progressPercent}%` }} /></div>
               </div>
             </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "4px 8px", marginTop: "12px", paddingTop: "10px", borderTop: "1px solid var(--line)" }}>
+              <div className="bar-label"><span style={{ fontSize: "11px", color: "var(--muted)" }}>7-day streak: <strong style={{ color: "var(--bright)" }}>+1%</strong> bonus</span></div>
+              <div className="bar-label"><span style={{ fontSize: "11px", color: "var(--muted)" }}>15-day streak: <strong style={{ color: "var(--bright)" }}>+1.5%</strong> bonus</span></div>
+              <div className="bar-label"><span style={{ fontSize: "11px", color: "var(--muted)" }}>25-day streak: <strong style={{ color: "var(--bright)" }}>+2.5%</strong> bonus</span></div>
+              <div className="bar-label"><span style={{ fontSize: "11px", color: "var(--muted)" }}>100-day streak: <strong style={{ color: "var(--bright)" }}>+5%</strong> bonus</span></div>
+            </div>
           </div>
           <div className="glass-card">
             <span className="section-kicker">CONTRACT INFORMATION</span>
@@ -101,7 +107,14 @@ export default function ProtocolStatsPage() {
                 </strong>
               </div>
             </div>
-            <a className="button secondary" href="#activity">View protocol activity <ExternalLink /></a>
+            <a
+              className="button secondary"
+              href={`https://testnet.nearblocks.io/address/${CONTRACT_ID}#contract-methods`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View Contract on NEARBlocks <ExternalLink />
+            </a>
           </div>
         </section>
         <section className="section" id="activity">

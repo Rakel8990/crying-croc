@@ -8,4 +8,4 @@ const roboto = Roboto({ subsets: ["latin"], weight: ["400", "500", "700"], varia
 
 export const metadata: Metadata = { title: "CRYCODILE — $CROC on NEAR", description: "One community. One daily target. Every check-in counts." }
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body className={`${ebGaramond.variable} ${roboto.variable}`}><IntroVideoGate>{children}</IntroVideoGate></body></html> }
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body className={`${ebGaramond.variable} ${roboto.variable}`}>{children}</body></html> }
