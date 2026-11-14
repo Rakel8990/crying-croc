@@ -1,0 +1,57 @@
+Commit SHA: 6fdc77a7c39bc39adad604f50dc8d42cbf13f9df
+UTC time: 2026-11-14 16:57:57 UTC
+Final conclusion: SUCCESS (npm ci: 0, tsc: 0, build: 0)
+Last 80 lines of web build output:
+Running npm install...
+
+added 182 packages, and audited 189 packages in 15s
+
+24 packages are looking for funding
+  run `npm fund` for details
+
+18 vulnerabilities (13 low, 5 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+Running npx tsc --noEmit...
+Running npm run build...
+
+> crying-croc-dashboard@0.1.0 build
+> next build
+
+▲ Next.js 16.4.6 (Turbopack)
+✓ Running next.config took 12ms
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 4.7s
+  Running TypeScript ...
+  Finished TypeScript in 2.9s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/6) ...
+  Generating static pages using 3 workers (1/6) 
+  Generating static pages using 3 workers (2/6) 
+  Generating static pages using 3 workers (4/6) 
+✓ Generating static pages using 3 workers (6/6) in 219ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ○ /check-in
+├ ○ /mechanic
+└ ○ /protocol-stats
+
+
+○  (Static)  prerendered as static content
+
