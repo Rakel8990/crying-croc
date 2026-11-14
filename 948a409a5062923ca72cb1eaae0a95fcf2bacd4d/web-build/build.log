@@ -1,0 +1,64 @@
+Commit SHA: 948a409a5062923ca72cb1eaae0a95fcf2bacd4d
+UTC time: 2026-11-14 16:03:10 UTC
+Final conclusion: FAIL (npm ci: 0, tsc: 0, build: 1)
+Last 80 lines of web build output:
+Running npm install...
+
+added 145 packages, and audited 152 packages in 12s
+
+23 packages are looking for funding
+  run `npm fund` for details
+
+15 vulnerabilities (10 low, 5 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+Running npx tsc --noEmit...
+Running npm run build...
+
+> crying-croc-dashboard@0.1.0 build
+> next build
+
+▲ Next.js 16.4.6 (Turbopack)
+✓ Running next.config took 16ms
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 error:
+./node_modules/@meteorwallet/sdk/dist/index.js:9:1
+Error: Module not found: Can't resolve 'near-api-js'
+  [90m 7 |[0m [36mimport[0m { actionCreators, createTransaction } [36mfrom[0m [32m"@near-js/transactions"[0m;
+  [90m 8 |[0m [36mimport[0m [32m"@near-js/types"[0m;
+[31m[1m>[0m [90m 9 |[0m [36mimport[0m { utils } [36mfrom[0m [32m"near-api-js"[0m;
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m10 |[0m [36mimport[0m { z } [36mfrom[0m [32m"zod"[0m;
+  [90m11 |[0m [36mimport[0m { nanoid } [36mfrom[0m [32m"nanoid"[0m;
+  [90m12 |[0m [36mimport[0m { stringify } [36mfrom[0m [32m"query-string"[0m;
+
+
+
+Import trace:
+  Client Component Browser:
+    ./node_modules/@meteorwallet/sdk/dist/index.js [Client Component Browser]
+    ./node_modules/@near-wallet-selector/meteor-wallet/index.js [Client Component Browser]
+    ./lib/near-wallet.ts [Client Component Browser]
+    ./app/check-in/page.tsx [Client Component Browser]
+    ./app/check-in/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at ./node_modules/ (meteorwallet/sdk/dist/index.js:9:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
