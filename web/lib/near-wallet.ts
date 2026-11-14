@@ -5,7 +5,12 @@ import { callViewMethod } from "./contract"
 
 export function getInjectedMeteor(): any {
   if (typeof window === "undefined") return null
-  return (window as any).meteorWallet || (window as any).near || null
+  return (
+    (window as any).meteor ||
+    (window as any).meteorWallet ||
+    (window as any).near ||
+    null
+  )
 }
 
 export async function waitForInjectedWallet(timeoutMs = 1500): Promise<any> {
@@ -27,7 +32,7 @@ export async function waitForInjectedWallet(timeoutMs = 1500): Promise<any> {
 }
 
 export async function getConnectedAccountId(): Promise<string | null> {
-  const meteor = await waitForInjectedWallet(500)
+  const meteor = await waitForInjectedWallet(600)
   if (!meteor) return null
 
   try {
@@ -39,13 +44,19 @@ export async function getConnectedAccountId(): Promise<string | null> {
       return meteor.getAccountId ? meteor.getAccountId() : null
     }
     if (meteor.accountId) return meteor.accountId
+    if (typeof meteor.getAccounts === "function") {
+      const accs = await meteor.getAccounts()
+      if (accs && accs.length > 0) {
+        return accs[0].accountId || accs[0]
+      }
+    }
   } catch (e) {
     console.error("Error reading account from Meteor Wallet:", e)
   }
   return null
 }
 
-export async function connectWallet(): Promise<void> {
+export async function connectWallet(): Promise<{ success: boolean; message?: string }> {
   const meteor = await waitForInjectedWallet(1000)
 
   if (meteor) {
@@ -55,21 +66,30 @@ export async function connectWallet(): Promise<void> {
           contractId: CONTRACT_ID,
           title: "Crying Croc",
         })
-        return
+        return { success: true }
       }
       if (typeof meteor.signIn === "function") {
         await meteor.signIn({
           contractId: CONTRACT_ID,
         })
-        return
+        return { success: true }
       }
-    } catch (e) {
+      if (typeof meteor.login === "function") {
+        await meteor.login({
+          contractId: CONTRACT_ID,
+        })
+        return { success: true }
+      }
+    } catch (e: any) {
       console.error("Meteor sign-in error:", e)
+      return { success: false, message: e?.message || "Sign-in was cancelled or failed." }
     }
   }
 
-  // Fallback: If extension not installed in browser, open Meteor Wallet Testnet web
-  window.open("https://wallet.testnet.meteorwallet.app/", "_blank")
+  return {
+    success: false,
+    message: "Meteor Wallet extension not detected. Please make sure your Meteor Wallet extension is unlocked in your browser bar.",
+  }
 }
 
 export async function disconnectWallet(): Promise<void> {

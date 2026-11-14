@@ -34,7 +34,17 @@ export default function CheckInPage() {
     if (connected) {
       await disconnectWallet()
     } else {
-      await connectWallet()
+      setMessage("")
+      const res = await connectWallet()
+      if (!res.success && res.message) {
+        setMessage(res.message)
+      } else {
+        const id = await getConnectedAccountId()
+        if (id) {
+          setAccountId(id)
+          setConnected(true)
+        }
+      }
     }
   }
 
