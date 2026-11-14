@@ -30,7 +30,7 @@ export default function CheckInPage() {
   const isTargetMet = checkinsNum >= targetNum && targetNum > 0
   const mascotVideoSrc = isTargetMet
     ? "https://files.catbox.moe/ef0gmt.mp4"
-    : "https://files.catbox.moe/jmhkvx.mp4"
+    : "https://files.catbox.moe/cw7oab.mp4"
 
   useEffect(() => {
     getConnectedAccountId().then(async (id) => {
