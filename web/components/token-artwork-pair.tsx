@@ -1,33 +1,24 @@
 "use client"
 
 import { motion, useReducedMotion } from "framer-motion"
-import { useCrocData } from "../lib/contract"
+
+const tokenArtworks = [
+  {
+    symbol: "$NEAR",
+    source:
+      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/7ceec335-5782-4296-8bbd-0739b7b8468e-removebg-preview-KmsG1OphjwcdLEOp8sLDLJ9i93vOEv.png",
+    description: "Glass NEAR arrow token on an emerald diamond",
+  },
+  {
+    symbol: "$CROC",
+    source:
+      "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/1ebcaac1-4519-4653-b756-1c2cce9cbf5d-removebg-preview%20%281%29-GbuI3sYnfnJAPUZMyJfU0YYBJQDLzp.png",
+    description: "Glass crocodile mascot on an emerald diamond",
+  },
+]
 
 export function TokenArtworkPair() {
   const prefersReducedMotion = useReducedMotion()
-  const { mascotState } = useCrocData()
-
-  const crocDescription =
-    mascotState === "happy"
-      ? "Glass crocodile mascot on an emerald diamond — Happy Croc (Target Met)"
-      : mascotState === "crying"
-        ? "Glass crocodile mascot on an emerald diamond — Crying Croc (Target Missed)"
-        : "Glass crocodile mascot on an emerald diamond — Neutral Croc (Cycle Active)"
-
-  const tokenArtworks = [
-    {
-      symbol: "$NEAR",
-      source:
-        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/7ceec335-5782-4296-8bbd-0739b7b8468e-removebg-preview-KmsG1OphjwcdLEOp8sLDLJ9i93vOEv.png",
-      description: "Glass NEAR arrow token on an emerald diamond",
-    },
-    {
-      symbol: "$CROC",
-      source:
-        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/1ebcaac1-4519-4653-b756-1c2cce9cbf5d-removebg-preview%20%281%29-GbuI3sYnfnJAPUZMyJfU0YYBJQDLzp.png",
-      description: crocDescription,
-    },
-  ]
 
   return (
     <div className="token-showcase" role="group" aria-label="NEAR and CROC tokens">
@@ -82,11 +73,13 @@ export function TokenArtworkPair() {
               />
             </span>
             <span className="token-art-face token-art-face--back" aria-hidden="true">
-              <span className="token-art-metal">
-                <span className="token-art-back-symbol">
-                  {token.symbol === "$CROC" && mascotState === "crying" ? "cry" : token.symbol.toLowerCase()}
-                </span>
-              </span>
+              <img
+                src={token.source}
+                alt=""
+                className="token-art-image"
+                loading="eager"
+                draggable={false}
+              />
             </span>
           </motion.span>
         </motion.figure>
