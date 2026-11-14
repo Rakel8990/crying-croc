@@ -1,5 +1,5 @@
-Commit SHA: 01a49afcfa61988a525b5d01507c6a2f9b91d4f4
-UTC time: 2026-11-14 13:44:15 UTC
+Commit SHA: 83e7234b68dcdcdd13b5a751a1e730864c508ee8
+UTC time: 2026-11-14 13:57:17 UTC
 Final conclusion: SUCCESS (unit tests: 0, cargo build: 0)
 Last 300 lines of Cargo output:
 [1m[92m    Updating[0m crates.io index
@@ -39,12 +39,12 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m rustls v0.23.43
 [1m[92m   Compiling[0m tower v0.5.3
 [1m[92m   Compiling[0m blst v0.3.17
-[1m[92m   Compiling[0m zstd-safe v7.4.1
 [1m[92m   Compiling[0m tower-http v0.6.11
-[1m[92m   Compiling[0m zstd v0.13.5
 [1m[92m   Compiling[0m ureq v3.4.2
+[1m[92m   Compiling[0m zstd-safe v7.4.1
 [1m[92m   Compiling[0m tokio-native-tls v0.3.1
 [1m[92m   Compiling[0m near-crypto v0.31.1
+[1m[92m   Compiling[0m zstd v0.13.5
 [1m[92m   Compiling[0m hyper-tls v0.6.0
 [1m[92m   Compiling[0m near-sandbox v0.3.16
 [1m[92m   Compiling[0m near-vm-runner v0.31.1
@@ -53,10 +53,10 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m reqwest v0.12.28
 [1m[92m   Compiling[0m tokio-retry v0.3.2
 [1m[92m   Compiling[0m near-sdk v5.17.2
+[1m[92m   Compiling[0m near-contract-standards v5.17.2
 [1m[92m   Compiling[0m aws-lc-rs v1.16.2
 [1m[92m   Compiling[0m near-crypto v0.37.4
 [1m[92m   Compiling[0m near-primitives v0.37.4
-[1m[92m   Compiling[0m near-contract-standards v5.17.2
 [1m[92m   Compiling[0m tokio-rustls v0.26.6
 [1m[92m   Compiling[0m rustls-platform-verifier v0.7.1
 [1m[92m   Compiling[0m hyper-rustls v0.27.10
@@ -65,35 +65,35 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m near-jsonrpc-primitives v0.37.4
 [1m[92m   Compiling[0m near-jsonrpc-client v0.22.0
 [1m[92m   Compiling[0m crying-croc v0.1.0 (/home/runner/work/crying-croc/crying-croc)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 59.39s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 58.48s
 [1m[92m     Running[0m unittests src/lib.rs (target/debug/build/crying-croc/096de7a0ab29c9f6/out/crying_croc-096de7a0ab29c9f6)
 
 running 41 tests
 test tests::account_progress_is_none_for_unknown_account ... ok
-test tests::check_in_twice_in_one_day_is_rejected - should panic ... ok
 test tests::check_in_is_blocked_until_a_three_day_backlog_is_cleared - should panic ... ok
+test tests::check_in_twice_in_one_day_is_rejected - should panic ... ok
 test tests::account_progress_is_resolved_after_claim ... ok
 test tests::claim_is_rejected_while_a_backlog_exists - should panic ... ok
 test tests::claim_on_the_same_day_as_check_in_is_rejected_until_settlement - should panic ... ok
 test tests::claim_moves_exactly_the_recorded_reward_from_escrow_to_claimer ... ok
 test tests::claim_twice_is_rejected - should panic ... ok
 test tests::controllable_clock_uses_the_selected_day ... ok
+test tests::claim_pays_daily_reward_and_milestone_bonus_exactly_once ... ok
 test tests::ft_metadata_matches_project_token_metadata ... ok
 test tests::get_day_is_none_before_settlement ... ok
-test tests::claim_pays_daily_reward_and_milestone_bonus_exactly_once ... ok
-test tests::get_day_returns_good_day_record_after_settlement ... ok
 test tests::get_day_returns_missed_day_record_after_settlement ... ok
+test tests::get_day_returns_good_day_record_after_settlement ... ok
 test tests::climbing_to_streak_seven_again_does_not_pay_the_milestone_twice ... ok
 test tests::exact_rounding_leaves_checker_dust_unminted ... ok
 test tests::milestone_bonus_transfer_emits_exactly_one_nep141_transfer_event ... ok
 test tests::missed_day_never_pays_a_milestone_bonus ... ok
+test tests::many_checker_milestone_floors_per_checker_and_keeps_dust_in_treasury ... ok
 test tests::next_check_in_lazily_pays_daily_reward_and_milestone_bonus ... ok
-test tests::one_checker_milestone_moves_exact_bonus_without_changing_supply ... ok
 test tests::pending_reward_is_paid_before_a_new_check_in_is_recorded ... ok
+test tests::one_checker_milestone_moves_exact_bonus_without_changing_supply ... ok
 test tests::reward_escrow_cannot_transfer_with_ft_transfer - should panic ... ok
 test tests::reward_escrow_cannot_transfer_with_ft_transfer_call - should panic ... ok
 test tests::settle_is_safe_to_call_twice ... ok
-test tests::many_checker_milestone_floors_per_checker_and_keeps_dust_in_treasury ... ok
 test tests::rounded_zero_milestone_bonus_is_marked_paid_and_never_exceeds_treasury ... ok
 test tests::skipped_days_block_check_in_until_settle_is_called ... ok
 test tests::storage_unregister_with_force_is_refused_for_unresolved_reward - should panic ... ok
@@ -111,9 +111,9 @@ test tests::milestone_bonus_is_paid_only_at_streaks_7_15_25_and_100 ... ok
 test tests::total_supply_never_exceeds_one_billion ... ok
 test tests::sixty_day_replay_matches_independent_reference_and_simulation_csv ... ok
 
-test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 47.20s
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.22s
 
 [1m[92m Downloading[0m crates ...
 [1m[92m  Downloaded[0m bumpalo v3.20.4
 [1m[92m   Compiling[0m crying-croc v0.1.0 (/home/runner/work/crying-croc/crying-croc)
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1.42s
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1.40s
