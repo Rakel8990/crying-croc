@@ -1,5 +1,5 @@
-Commit SHA: 5329965ec70fb1051781efc615937b30bf086520
-UTC time: 2026-11-14 16:12:57 UTC
+Commit SHA: e3a6fcf31b654b37a8293e7353f6a0d866e21738
+UTC time: 2026-11-14 16:31:47 UTC
 Final conclusion: SUCCESS (unit tests: 0, cargo build: 0)
 Last 300 lines of Cargo output:
 [1m[92m    Updating[0m crates.io index
@@ -32,8 +32,6 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m secp256k1 v0.27.0
 [1m[92m   Compiling[0m openssl-sys v0.9.118
 [1m[92m   Compiling[0m openssl v0.10.82
-[1m[92m   Compiling[0m zstd-safe v7.4.1
-[1m[92m   Compiling[0m zstd v0.13.5
 [1m[92m   Compiling[0m hyper v1.12.0
 [1m[92m   Compiling[0m rustls-webpki v0.103.13
 [1m[92m   Compiling[0m hyper-util v0.1.21
@@ -41,31 +39,33 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m rustls v0.23.43
 [1m[92m   Compiling[0m tower v0.5.3
 [1m[92m   Compiling[0m blst v0.3.17
-[1m[92m   Compiling[0m tokio-native-tls v0.3.1
 [1m[92m   Compiling[0m tower-http v0.6.11
 [1m[92m   Compiling[0m ureq v3.4.2
+[1m[92m   Compiling[0m tokio-native-tls v0.3.1
 [1m[92m   Compiling[0m near-crypto v0.31.1
 [1m[92m   Compiling[0m near-sandbox v0.3.16
+[1m[92m   Compiling[0m zstd-safe v7.4.1
+[1m[92m   Compiling[0m zstd v0.13.5
 [1m[92m   Compiling[0m hyper-tls v0.6.0
 [1m[92m   Compiling[0m reqwest v0.12.28
 [1m[92m   Compiling[0m near-workspaces v0.23.0
 [1m[92m   Compiling[0m near-vm-runner v0.31.1
 [1m[92m   Compiling[0m near-primitives v0.31.1
 [1m[92m   Compiling[0m tokio-retry v0.3.2
+[1m[92m   Compiling[0m near-sdk v5.17.2
 [1m[92m   Compiling[0m aws-lc-rs v1.16.2
+[1m[92m   Compiling[0m near-contract-standards v5.17.2
 [1m[92m   Compiling[0m near-crypto v0.37.4
 [1m[92m   Compiling[0m near-primitives v0.37.4
-[1m[92m   Compiling[0m near-sdk v5.17.2
-[1m[92m   Compiling[0m near-contract-standards v5.17.2
 [1m[92m   Compiling[0m tokio-rustls v0.26.6
-[1m[92m   Compiling[0m hyper-rustls v0.27.10
 [1m[92m   Compiling[0m rustls-platform-verifier v0.7.1
+[1m[92m   Compiling[0m hyper-rustls v0.27.10
 [1m[92m   Compiling[0m reqwest v0.13.5
 [1m[92m   Compiling[0m near-chain-configs v0.37.4
 [1m[92m   Compiling[0m near-jsonrpc-primitives v0.37.4
 [1m[92m   Compiling[0m near-jsonrpc-client v0.22.0
 [1m[92m   Compiling[0m crying-croc v0.1.0 (/home/runner/work/crying-croc/crying-croc)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 58.30s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 58.06s
 [1m[92m     Running[0m unittests src/lib.rs (target/debug/build/crying-croc/096de7a0ab29c9f6/out/crying_croc-096de7a0ab29c9f6)
 
 running 41 tests
@@ -93,16 +93,16 @@ test tests::pending_reward_is_paid_before_a_new_check_in_is_recorded ... ok
 test tests::reward_escrow_cannot_transfer_with_ft_transfer - should panic ... ok
 test tests::reward_escrow_cannot_transfer_with_ft_transfer_call - should panic ... ok
 test tests::settle_is_safe_to_call_twice ... ok
-test tests::many_checker_milestone_floors_per_checker_and_keeps_dust_in_treasury ... ok
-test tests::skipped_days_block_check_in_until_settle_is_called ... ok
 test tests::rounded_zero_milestone_bonus_is_marked_paid_and_never_exceeds_treasury ... ok
+test tests::skipped_days_block_check_in_until_settle_is_called ... ok
+test tests::many_checker_milestone_floors_per_checker_and_keeps_dust_in_treasury ... ok
 test tests::storage_unregister_with_force_is_refused_for_unresolved_reward - should panic ... ok
 test tests::storage_unregister_without_force_is_refused_for_unresolved_reward - should panic ... ok
 test tests::supply_matches_treasury_escrow_and_holders_after_day_claim_and_transfer ... ok
 test tests::target_met_exactly_is_successful ... ok
+test tests::target_missed_by_one_burns_exactly_five_percent ... ok
 test tests::ten_day_backlog_settles_seven_days_then_the_remaining_three ... ok
 test tests::three_day_backlog_settles_in_day_order_and_then_allows_check_in ... ok
-test tests::target_missed_by_one_burns_exactly_five_percent ... ok
 test tests::treasury_cannot_transfer_with_ft_transfer - should panic ... ok
 test tests::treasury_cannot_transfer_with_ft_transfer_call - should panic ... ok
 test tests::unregistered_account_cannot_check_in - should panic ... ok
@@ -111,9 +111,9 @@ test tests::milestone_bonus_is_paid_only_at_streaks_7_15_25_and_100 ... ok
 test tests::total_supply_never_exceeds_one_billion ... ok
 test tests::sixty_day_replay_matches_independent_reference_and_simulation_csv ... ok
 
-test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.51s
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 49.74s
 
 [1m[92m Downloading[0m crates ...
 [1m[92m  Downloaded[0m bumpalo v3.20.4
 [1m[92m   Compiling[0m crying-croc v0.1.0 (/home/runner/work/crying-croc/crying-croc)
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1.32s
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1.31s
