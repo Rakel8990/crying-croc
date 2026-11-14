@@ -27,10 +27,7 @@ export default function CheckInPage() {
     <main>
       <div className="video-overlay" />
       <div className="noise" />
-      <div className="ticker-field" aria-hidden="true">
-        <span>$CROC</span><span>$NEAR</span><span>$CROC</span><span>$NEAR</span><span>$CROC</span><span>$NEAR</span>
-      </div>
-      <video className="background-video" src="https://files.catbox.moe/2pu9xu.mp4" autoPlay muted loop playsInline preload="auto" aria-hidden="true" />
+      <video className="background-video" src="https://files.catbox.moe/ef0gmt.mp4" autoPlay muted loop playsInline preload="auto" aria-hidden="true" />
 
       <div className="site-shell">
         <header className="app-nav">
