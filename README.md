@@ -107,33 +107,39 @@ Later that day, Kian opens the app again. He sees the "Pending Rewards" balance 
 
 Burning reduces supply. It does not promise any price.
 
-## Try it (do X, see Y)
+## Try it (Do X, See Y)
 
-Set these in a bash shell (needs `curl` and `jq`):
+Follow these steps in order. You do not need a wallet to verify steps 1 through 4.
 
-```
-RPC=https://test.rpc.fastnear.com
-CONTRACT=croc-final-43570992494-1.testnet
-```
+### 1. View the live dashboard
+- **Do:** Open https://crycodile.vercel.app
+- **See:** The current streak, today's check-in progress, and the mascot. No wallet required to view.
 
-1. **Open the app** at https://crycodile.vercel.app. You see the live streak, today's check-ins against the target, the treasury, and the milestone tracker. No wallet needed.
-2. **Read a setting.** See `5`:
-   ```
-   curl -s -X POST $RPC -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"query","params":{"request_type":"call_function","account_id":"'$CONTRACT'","method_name":"target","args_base64":"e30=","finality":"final"}}' | jq -r '.result.result | implode'
-   ```
-   Other views with no arguments: `day_length_ns` (`86400000000000`), `current_streak`, `longest_streak`, `today_checkins`, `emission_pool`, `treasury`, `ft_total_supply`, `next_day_to_settle`, `milestones_paid`. At launch the treasury is `300000000000000000000000000`. It is lower after missed days are settled.
-3. **Confirm nobody can change the contract.** See an empty list (`[]`):
-   ```
-   curl -s -X POST $RPC -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"query","params":{"request_type":"view_access_key_list","account_id":"'$CONTRACT'","finality":"final"}}' | jq '.result.keys'
-   ```
-4. **Confirm the deployed code is this repository's code.** See `3XFpskxNZx2dnewRdSZWfC94ewP1Aj79YBx5NyBF5kRG`:
-   ```
-   curl -s -X POST $RPC -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"query","params":{"request_type":"view_account","account_id":"'$CONTRACT'","finality":"final"}}' | jq -r '.result.code_hash'
-   ```
-   The workflow compared it with the SHA-256 of the exact Wasm it built (`25778fb1169cf17c048bfafb803fefe0d89a671c08d7d673e533de430c6846cb`, the same value in base58). The proof is in `docs/testnet/final/`.
-5. **Run the tests.** See 41 tests pass: `cargo test` (needs Rust). They also run on every push in GitHub Actions (`test.yml`).
-6. **See the 60-day simulation.** Workflow `simulation.yml`. Tables and charts are in `docs/simulation/`.
-7. **Check in yourself.** Open the app, connect a NEAR testnet wallet, register (small deposit), and press Check in. Once the day is settled, press Claim. You can also call `storage_deposit`, `check_in`, `settle` and `claim` directly from the explorer's contract page.
+### 2. Verify the target is immutable
+- **Do:** Run this exact command in your terminal:
+  ```bash
+  curl -s -X POST https://rpc.testnet.near.org -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"query","params":{"request_type":"call_function","account_id":"croc-final-43570992494-1.testnet","method_name":"target","args_base64":"e30=","finality":"final"}}' | jq -r '.result.result | implode'
+  ```
+- **See:** `5` (The target is hardcoded, no admin can change it).
+
+### 3. Verify the keys are deleted (No admin)
+- **Do:** Run this exact command in your terminal:
+  ```bash
+  curl -s -X POST https://rpc.testnet.near.org -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"query","params":{"request_type":"view_access_key_list","account_id":"croc-final-43570992494-1.testnet","finality":"final"}}' | jq '.result.keys'
+  ```
+- **See:** `[]` (An empty array. Nobody holds a key to upgrade or pause the contract).
+
+### 4. Verify the code matches the repository
+- **Do:** Look at the deployment proof in `docs/testnet/final/result.json`.
+- **See:** The `onchain_code_hash` (`3XFpskxNZx2dnewRdSZWfC94ewP1Aj79YBx5NyBF5kRG`) exactly matches the hash of the Wasm file in the repo.
+
+### 5. Run the automated tests
+- **Do:** Clone the repo and run `cargo test` in the terminal.
+- **See:** `41 passed; 0 failed` (This includes the 60-day independent integer model replay).
+
+### 6. Live check-in (Requires Testnet Wallet)
+- **Do:** On the live app, connect a Meteor Wallet (set to Testnet), register, and click "Check In". Sign the transaction.
+- **See:** A success message and a transaction hash on the NEAR Explorer. If 5 wallets check in, the streak advances. If it misses, the next `settle()` call will burn 5% of the treasury.
 
 ## Evidence
 
