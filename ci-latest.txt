@@ -1,5 +1,5 @@
-Commit SHA: 65606040bec9181bff5acb1978d6f48209743b5e
-UTC time: 2026-11-15 20:30:22 UTC
+Commit SHA: 8db44bf7d19dc463d925d49ffd12fd8beabfc10d
+UTC time: 2026-11-15 20:38:07 UTC
 Final conclusion: SUCCESS (unit tests: 0, cargo build: 0)
 Last 300 lines of Cargo output:
 [1m[92m    Updating[0m crates.io index
@@ -22,8 +22,8 @@ Last 300 lines of Cargo output:
 [1m[92m  Downloaded[0m cc v1.11.2
 [1m[92m  Downloaded[0m jiff-core v0.1.8
 [1m[92m  Downloaded[0m jiff v0.2.46
-[1m[92m  Downloaded[0m mio v1.2.5
 [1m[92m  Downloaded[0m rand v0.10.4
+[1m[92m  Downloaded[0m mio v1.2.5
 [1m[92m   Compiling[0m cc v1.11.2
 [1m[92m   Compiling[0m mio v1.2.5
 [1m[92m   Compiling[0m rand v0.10.4
@@ -41,20 +41,20 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m rustls-webpki v0.103.13
 [1m[92m   Compiling[0m native-tls v0.2.18
 [1m[92m   Compiling[0m rustls v0.23.43
-[1m[92m   Compiling[0m zstd-safe v7.4.1
-[1m[92m   Compiling[0m zstd v0.13.5
 [1m[92m   Compiling[0m tower v0.5.3
 [1m[92m   Compiling[0m blst v0.3.17
-[1m[92m   Compiling[0m ureq v3.4.2
-[1m[92m   Compiling[0m tokio-native-tls v0.3.1
 [1m[92m   Compiling[0m tower-http v0.6.11
+[1m[92m   Compiling[0m tokio-native-tls v0.3.1
+[1m[92m   Compiling[0m ureq v3.4.2
+[1m[92m   Compiling[0m zstd-safe v7.4.1
 [1m[92m   Compiling[0m near-crypto v0.31.1
-[1m[92m   Compiling[0m hyper-tls v0.6.0
+[1m[92m   Compiling[0m zstd v0.13.5
 [1m[92m   Compiling[0m near-sandbox v0.3.16
+[1m[92m   Compiling[0m hyper-tls v0.6.0
 [1m[92m   Compiling[0m near-vm-runner v0.31.1
-[1m[92m   Compiling[0m near-primitives v0.31.1
-[1m[92m   Compiling[0m near-workspaces v0.23.0
 [1m[92m   Compiling[0m reqwest v0.12.28
+[1m[92m   Compiling[0m near-workspaces v0.23.0
+[1m[92m   Compiling[0m near-primitives v0.31.1
 [1m[92m   Compiling[0m tokio-retry v0.3.2
 [1m[92m   Compiling[0m near-sdk v5.17.2
 [1m[92m   Compiling[0m near-contract-standards v5.17.2
@@ -69,7 +69,7 @@ Last 300 lines of Cargo output:
 [1m[92m   Compiling[0m near-jsonrpc-primitives v0.37.4
 [1m[92m   Compiling[0m near-jsonrpc-client v0.22.0
 [1m[92m   Compiling[0m crying-croc v0.1.0 (/home/runner/work/crying-croc/crying-croc)
-[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 51.00s
+[1m[92m    Finished[0m `test` profile [unoptimized + debuginfo] target(s) in 39.98s
 [1m[92m     Running[0m unittests src/lib.rs (target/debug/build/crying-croc/7fe99bc4427961db/out/crying_croc-7fe99bc4427961db)
 
 running 41 tests
@@ -115,10 +115,10 @@ test tests::milestone_bonus_is_paid_only_at_streaks_7_15_25_and_100 ... ok
 test tests::total_supply_never_exceeds_one_billion ... ok
 test tests::sixty_day_replay_matches_independent_reference_and_simulation_csv ... ok
 
-test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 34.94s
+test result: ok. 41 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 23.50s
 
 [1m[92m Downloading[0m crates ...
 [1m[92m  Downloaded[0m jiff-tzdb v0.1.10
 [1m[92m  Downloaded[0m bumpalo v3.20.4
 [1m[92m   Compiling[0m crying-croc v0.1.0 (/home/runner/work/crying-croc/crying-croc)
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 1.18s
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 0.98s
