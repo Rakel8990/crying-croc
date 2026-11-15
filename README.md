@@ -152,6 +152,7 @@ Every claim in this repository is verified below: the immutable deployment, the 
 | Fast copy smoke test 42470768543 | Deploy, 5 users register and check in, the day is settled, and one claim pays exactly 630,000 CROC, with the balances moving by exactly that. | `docs/testnet/fast/` |
 | 41 unit tests | Single check-in, single claim, reward paid before new check-in, settle safe to call twice, backlog handling, rounding/dust, target met/missed, supply cap, unregister refusal, milestone bonuses, views. | `src/tests.rs` |
 | Simulation & replay | 4 situations over 60 days, and a replay test through the real contract code against an independent integer model. | `docs/simulation/`, `scripts/` |
+| Adaptive Target Simulation | Proves that without ZK human gates, bots can artificially spike an adaptive target and leave, forcing real users to miss the target and burn the treasury. Validates our fixed target of 5. | `docs/simulation/adaptive_target.md` |
 | Live Dashboard | Reads directly from the contract. Tracks on-chain metrics (Total Supply, Treasury, Emission Pool), Community Stats (Current Streak, Daily Target, Milestone Tracker), and the Protocol Activity ledger (Settlement history / mint & burn log). | [crycodile.vercel.app](https://crycodile.vercel.app/protocol-stats#activity) |
 
 ## Simulation and scale
