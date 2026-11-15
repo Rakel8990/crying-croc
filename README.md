@@ -85,7 +85,7 @@ And if nobody does? Well, you know what happens to Crycodile.
 
 ### Example: 48 hours in the pond (Kian's story)
 
-**Day 1 — The Smile**  
+**Day 1: The Smile**  
 Kian connects his wallet and clicks "Check In." He is one of exactly 5 wallets that show up today. Because the target of 5 is met, the contract triggers a Good Day:
 
 - The daily pot is 3,500,000 CROC (0.5% of the remaining pool).
@@ -95,7 +95,7 @@ Kian connects his wallet and clicks "Check In." He is one of exactly 5 wallets t
 
 Kian doesn't have to write anything down. The live app immediately shows his 630,000 CROC sitting in "Pending Rewards." The tokens are safely held in the contract's internal escrow.
 
-**Day 2 — The Tears**  
+**Day 2: The Tears**  
 The next day, only 2 people show up. The target of 5 is missed. The contract triggers a Missed Day:
 
 - Zero tokens are minted.
