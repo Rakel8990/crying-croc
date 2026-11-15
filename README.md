@@ -162,21 +162,29 @@ Every claim in this repository is verified below: the immutable deployment, the 
 - With no check-ins at all, the treasury melts to almost nothing in about a year.
 - A fixed target must sit below the quiet-day crowd. With a crowd far above it, no day is ever missed and nothing burns. The target is a deployment setting, so a mainnet version would choose it for its expected crowd.
 
-## Bots and fake wallets: limits, stated plainly
+## Sybil Defense & Why the Target is Fixed at 5
 
-The contract counts wallets, not people. One person with many wallets can take a large share of each day's reward and can keep the target met.
+We don't pretend the contract can see humans. It sees wallets. One person with 100 wallets can take a massive share of the daily pot. We built the math to show exactly what that looks like.
 
-What exists today: one check-in per account per day, a required NEP-145 storage deposit per wallet (nearly free on testnet because test NEAR is free, a real cost on mainnet), and the published numbers below. Nothing here proves one human per wallet.
-
-Share of a day's checker pot taken by one operator = bots / (humans + bots):
+Share of a day's checker pot taken by one bot operator = `bots / (humans + bots)`
 
 | Real checkers | 120 bot wallets | 1,000 bots | 5,000 bots |
 |---|---|---|---|
-| 200 | 37.5% | 83% | 96% |
-| 10,000 | 1.2% | 9.1% | 33% |
+| 200 | 37.5% | 83.0% | 96.0% |
+| 10,000 | 1.2% | 9.1% | 33.0% |
 | 60,000 | 0.2% | 1.6% | 7.7% |
 
-Explored for mainnet, not built: a larger refundable bond, a holding requirement, and proof-of-personhood such as zero-knowledge credentials or a NEAR proof-of-human registry (for example I-Am-Human). None can be demonstrated on testnet, and a money-based gate means nothing when test NEAR is free.
+To fight this, the only friction on testnet is the NEP-145 storage deposit (which is nearly free on testnet, but becomes a real capital cost on mainnet).
+
+### Why is the target fixed at 5? (The Adaptive Target Trap)
+
+A common idea for memecoins is an adaptive target (e.g., scaling the target to 80% of the 7-day median check-ins). We built a full simulation of this (`docs/simulation/adaptive_target.md`), and the math revealed a fatal flaw:
+
+Without a ZK proof-of-humanity gate, bots can weaponize an adaptive target. A bot farm can artificially spike the target to 100 for a few days, then leave. The real community is suddenly forced to try and hit an impossible number, causing the treasury to burn to zero.
+
+Because we could not deploy a live ZK verifier on testnet in time, we locked the target at 5. It is a deliberate defensive choice to protect real humans from coordinated bot griefing.
+
+For a production mainnet deployment, a larger refundable bond and a holding requirement would price out bots. The ultimate fix is a ZK proof-of-personhood credential (like the NEAR I-Am-Human registry), ensuring one human equals one check-in. None of these can be truthfully demonstrated on testnet today, so we built the hardest game possible using only on-chain economic friction.
 
 ## What we skipped on purpose, and why
 
