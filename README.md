@@ -236,7 +236,7 @@ A mainnet version would be a new contract with its target and numbers chosen aga
 
 Rust, near-sdk 5.17.2, near-contract-standards 5.17.2 (NEP-141, NEP-145, NEP-148), near-cli-rs 0.31.1 and actionlint 1.7.12 (in GitHub Actions only), Python (simulations), GitHub Actions. App: Next.js, React, Tailwind CSS, Framer Motion and the NEAR wallet selector with Meteor Wallet (see `web/package.json`).
 
-**AI use.** The builder is not a developer and directed the work with AI tools. The contract, tests, simulations and workflows were written by AI coding agents (OpenAI Codex, Google Antigravity). The UI was built with v0 and Antigravity. Claude, ChatGPT, DeepSeek and Gemini were used for design, review and guidance. The mascot artwork was generated. All results above come from real GitHub Actions and testnet runs, which are published.
+**AI use.** Built with AI assistance: smart contract and engineering supported by Claude, Codex, and DeepSeek; UI designed with v0.
 
 ## License
 
