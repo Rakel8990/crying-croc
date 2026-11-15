@@ -66,17 +66,22 @@ And if nobody does? Well, you know what happens to Crycodile.
 
 ## How the mechanic works
 
-| Rule | Behavior |
+| Rule | What the contract actually does |
 |---|---|
-| Supply | 1,000,000,000 CROC maximum, 18 decimals. At launch 300,000,000 are held by the contract as a burn-only treasury, and 700,000,000 are an uncreated pool. |
-| Day | `day = block_timestamp_ns / 86400000000000` (a UTC day). |
-| Check-in | `check_in()` once per account per day. The account must first register with a small NEP-145 storage deposit. No minimum balance. |
-| Closing a day | A contract cannot act on its own. Anyone calls `settle()` after a day ends. It closes up to 7 days per call, each day exactly once. Check-ins and claims are blocked while days are unsettled. A scheduled GitHub Action (`keeper.yml`) calls it daily at 00:15 UTC. |
-| Good day (at least 5 check-ins) | pot = floor(pool / 200), which is 0.5% of the remaining pool. 90% is split equally among that day's checkers (rounded down, dust not created). 10% is created into the treasury. Streak +1. |
-| Missed day (fewer than 5 check-ins) | 5% of the treasury is burned. Streak resets to 0. Nothing is created. The pool is untouched. |
-| Rewards | Held in an internal escrow entry (`escrow.<contract>`) and paid exactly once, on your next check-in or when you call `claim()`. Nobody can sign as the escrow entry: only the contract account could create it, and its keys are deleted. |
-| Milestone bonus | When the community streak first reaches 7, 15, 25 or 100 days, the treasury pays a one-time bonus of 1%, 1.5%, 2.5% or 5% of its balance to that day's checkers. It is moved from the treasury to escrow, not created. Each milestone pays once ever. |
-| Unregister | `storage_unregister` is refused while a reward is unpaid, even with `force`. |
+| Standards | Fully implements NEP-141 (Fungible Token), NEP-145 (Storage Management), and NEP-148 (Metadata). |
+| Supply | 1,000,000,000 CROC maximum, 18 decimals. At launch 300,000,000 are held by the contract as a burn-only treasury; 700,000,000 are an uncreated emission pool. |
+| Day | `day = block_timestamp_ns / 86400000000000` (a UTC day). `day_length_ns` and `target` are fixed at deploy. |
+| Check-in | `check_in()` once per account per day. The account must first register with a small NEP-145 storage deposit. No minimum balance. Check-in pays any pending reward from a previous settled day before recording today. |
+| Closing a day | Contracts cannot act on their own, so anyone calls `settle()` after a day ends. It closes at most 7 days per call, each day exactly once. A scheduled GitHub Action (`keeper.yml`) calls it daily at 00:15 UTC to keep the engine running. |
+| Good day (≥ 5 check-ins) | `pot = floor(pool / 200) = 0.5%` of the remaining pool. 90% is split equally among that day's checkers (`per_checker = floor(checker_part / count)`); dust is not minted. 10% is minted into the treasury. Streak +1. |
+| Missed day (< 5 check-ins) | 5% of the treasury is burned. Streak resets to 0. Nothing is minted. The emission pool is untouched. |
+| Rewards | Held in an internal escrow ledger entry (`escrow.<contract>`). Paid exactly once, on your next `check_in()` or when you call `claim()`. The escrow is not a real account; only the contract can move its tokens, guaranteeing lazy claims never expire. |
+| Settlement safety | `claim()` requires the day to be settled first. This guarantees the contract pays you the exact correct amount based on the final number of check-ins. |
+| Milestone bonus | When the community streak first reaches 7, 15, 25, or 100 days, the treasury pays a one-time bonus of 1%, 1.5%, 2.5%, or 5% of its balance to that day's checkers. It is moved from the treasury to escrow, not minted. Each milestone pays once ever (`milestones_paid` view). |
+| Transfers | `ft_transfer` and `ft_transfer_call` are hard-blocked for the treasury and escrow. The treasury is burn-only; the escrow can only pay through the contract's internal resolver. |
+| Unregister | `storage_unregister` is refused while a reward is unresolved, even with `force = true`. If the reward is resolved, unregistering burns the caller's remaining CROC balance. The treasury and escrow can never unregister. |
+| No admin | There is no `set_target`, no upgrade, no pause, no owner field. After deploy and `new()`, every access key was deleted on-chain. |
+| Events | Every state change emits an on-chain event: `ft_mint`, `ft_burn`, `ft_transfer`, plus custom `check_in`, `claim`, `settled_day`, and `streak_change`. |
 
 Example. Day 1: 5 wallets check in. The pot is 3,500,000 CROC, so 3,150,000 is shared (630,000 each, which happened on testnet) and 350,000 goes to the treasury. Day 2: only 2 wallets show up. 5% of the treasury is burned and the streak is 0.
 
