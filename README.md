@@ -143,13 +143,16 @@ Follow these steps in order. You do not need a wallet to verify steps 1 through 
 
 ## Evidence
 
+Every claim in this repository is verified below: the immutable deployment, the programmable treasury milestones, the 60-day simulation, and the live UI.
+
 | Evidence | What it shows | Where |
 |---|---|---|
-| Final deployment, run 43570992494 | Deploy and `new()` in one transaction with two actions (`8BNW7DpPPDQwQtk7mT5G9KtjKbV21f2ioVwwCMrcgsGP`). Wasm hash equals on-chain code hash. All keys deleted (`G2ZyrHdp5r6RfjKvym5BMHuKFZAFKps7xD43bYkTNCnu`). Empty key list afterwards. Balance about 9.997 NEAR, storage in use 339,771 bytes. | `docs/testnet/final/` |
-| Milestone test, run 43231347872 | Fresh contract, 5 check-ins a day for 8 days. Day-7 bonus moved about 2,874,135 CROC from treasury to escrow, supply unchanged by the bonus, exactly one transfer event, one claim paid reward plus bonus (about 1,186,161 CROC), no second bonus on day 8. | `docs/testnet/milestone/` |
-| Fast copy smoke test, run 42470768543 | Deploy, 5 users register and check in, the day is settled, and one claim pays exactly 630,000 CROC with the balances moving by exactly that. | `docs/testnet/fast/` |
-| 41 unit tests | Single check-in, single claim, reward paid before a new check-in, settle safe to call twice, backlog handling, rounding and dust, target met exactly and missed by one, supply cap, unregister refusal, milestone bonuses, views. | `src/tests.rs` |
-| Simulation and replay test | Four situations over 60 days, and a replay of a 60-day schedule through the real contract code against an independent integer model. | `docs/simulation/`, `scripts/` |
+| Final deployment run 43570992494 | Deploy and `new()` in one transaction with two actions (`8BNW7DpPPDQwQtk7mT5G9KtjKbV21f2ioVwwCMrcgsGP`). Wasm hash exactly matches the on-chain code hash. All keys deleted (`G2ZyrHdp5r6RfjKvym5BMHuKFZAFKps7xD43bYkTNCnu`). Empty key list afterwards. Balance ~9.997 NEAR, storage in use 339,771 bytes. | `docs/testnet/final/` |
+| Milestone test run 43231347872 | Fresh contract, 5 check-ins/day for 8 days. Day-7 bonus moved exactly 2,874,135 CROC from treasury to escrow, supply unchanged by the bonus, exactly one transfer event. One claim paid reward plus bonus (about 1,186,161 CROC), no second bonus on day 8. | `docs/testnet/milestone/` |
+| Fast copy smoke test 42470768543 | Deploy, 5 users register and check in, the day is settled, and one claim pays exactly 630,000 CROC, with the balances moving by exactly that. | `docs/testnet/fast/` |
+| 41 unit tests | Single check-in, single claim, reward paid before new check-in, settle safe to call twice, backlog handling, rounding/dust, target met/missed, supply cap, unregister refusal, milestone bonuses, views. | `src/tests.rs` |
+| Simulation & replay | 4 situations over 60 days, and a replay test through the real contract code against an independent integer model. | `docs/simulation/`, `scripts/` |
+| Live Dashboard | Reads directly from the contract. Tracks on-chain metrics (Total Supply, Treasury, Emission Pool), Community Stats (Current Streak, Daily Target, Milestone Tracker), and the Protocol Activity ledger (Settlement history / mint & burn log). | [crycodile.vercel.app](https://crycodile.vercel.app/protocol-stats#activity) |
 
 ## Simulation and scale
 
