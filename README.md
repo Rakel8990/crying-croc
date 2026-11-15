@@ -2,8 +2,6 @@
 
 > The tears are fake. The burn is real.
 
-*Crocodile tears* means pretending to cry. Crycodile is a crying crocodile with one job for its community: show up every day. If enough wallets check in, new CROC is created and shared among them. If not, Crycodile cries and 5% of the treasury is burned for good. Nobody can change the rules, because the contract's keys are deleted.
-
 **Status:** NEAR testnet only. Not audited. No sale, no price. Built for NEAR Hackathon 2026, track **Memecoins With Mechanics**. MIT license.
 
 ## Links
@@ -18,9 +16,53 @@
 | Deployment proof | `docs/testnet/final/` and https://github.com/Rakel8990/crying-croc/actions/runs/43570992494 |
 | Repository | https://github.com/Rakel8990/crying-croc (the repo keeps its first name) |
 
-## What it is
+## The Story Behind Crycodile 🐊
 
-A NEP-141 token on NEAR whose supply is driven by a daily check-in rule inside the smart contract. A good day creates coins. A missed day burns treasury coins and resets the streak. The settings (24-hour days, target 5) were fixed at deployment, and then every access key of the contract account was deleted on-chain. No admin, no upgrade path, no fees, no team allocation, no presale.
+### Why Crycodile?
+
+The name comes from two things: *cry* and *crocodile*. It's also a little play on the expression *crocodile tears* when someone cries, but you're never quite sure how genuine those tears are.
+
+Our crocodile has a reason to cry. Actually, two.
+
+Think of the community as the ones who brought Crycodile into the world. They're his parents, and he's their slightly dramatic child. He needs attention every day. You can't just adopt a crocodile and forget to feed him.
+
+The community has to show up, check on him, and reach the daily target to keep things going.
+
+When they do, new $CROC is created from the emission pool. 90% of the daily reward pot is shared among that day's check-ins, and the remaining 10% returns to the treasury. The streak continues.
+
+That's when the tears disappear. He's just a crocodile again, chilling like nothing happened.
+
+But when the target is missed, nobody gets rewarded. The streak resets, and 5% of the treasury is permanently burned.
+
+That's when Crycodile comes out.
+
+He's crying because his community didn't make it that day. He's also crying because 5% of his treasury just went up in smoke. Poor guy. Or maybe not. After all, crocodile tears are supposed to be fake.
+
+And Crycodile isn't just a character watching numbers change. His mood follows what actually happens on-chain.
+
+The website tracks contract activity and switches between two mascot videos: Crycodile chilling when the community succeeds, and Crycodile crying when the target is missed and the treasury is burned. No AI pretending to be alive, no person choosing his mood. The contract determines the outcome; the website brings it to life.
+
+### We Created Him. The Community Owns His Future.
+
+Here's the part that matters.
+
+We came up with Crycodile. We designed him, built the contract, and brought him to life. But we didn't build him so that a development team could hold onto the controls forever.
+
+There are no team tokens, no presale, and no admin keys. The contract's settings are fixed at deployment. After deployment and initialization, every contract access key was deleted on-chain.
+
+And that changes things.
+
+From that moment on, developers no longer have the keys to step in and change the rules, upgrade the contract, or decide what happens next. Crycodile isn't something the team can steer whenever it wants. His future is in the hands of the people who show up and participate.
+
+We created Crycodile, but we don't own his future. That's the community's.
+
+The starting treasury holds 300 million CROC, while another 700 million CROC remains in the emission pool, subject to the contract's daily reward rules.
+
+Nobody gets to simply decide to mint more because they feel like it. The rules are already there. The community determines the daily outcome by participating.
+
+We gave Crycodile a name, a face, and a home. The community gives him a reason to wake up every day.
+
+And if nobody does? Well, you know what happens to Crycodile.
 
 ## How the mechanic works
 
