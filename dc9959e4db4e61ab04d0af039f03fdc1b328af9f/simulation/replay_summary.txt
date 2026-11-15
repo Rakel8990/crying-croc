@@ -1,0 +1,7 @@
+Fixed replay: weekend_dips, 100 humans, target 40, 60 days
+pool_yocto=561453240580234696157536831
+treasury_yocto=141303966350666524563675552
+total_supply_yocto=265996049828455298021891412
+streak=4
+longest_streak=5
+milestones_paid=0000
