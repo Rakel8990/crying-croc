@@ -83,7 +83,27 @@ And if nobody does? Well, you know what happens to Crycodile.
 | No admin | There is no `set_target`, no upgrade, no pause, no owner field. After deploy and `new()`, every access key was deleted on-chain. |
 | Events | Every state change emits an on-chain event: `ft_mint`, `ft_burn`, `ft_transfer`, plus custom `check_in`, `claim`, `settled_day`, and `streak_change`. |
 
-Example. Day 1: 5 wallets check in. The pot is 3,500,000 CROC, so 3,150,000 is shared (630,000 each, which happened on testnet) and 350,000 goes to the treasury. Day 2: only 2 wallets show up. 5% of the treasury is burned and the streak is 0.
+### Example: 48 hours in the pond (Kian's story)
+
+**Day 1 — The Smile**  
+Kian connects his wallet and clicks "Check In." He is one of exactly 5 wallets that show up today. Because the target of 5 is met, the contract triggers a Good Day:
+
+- The daily pot is 3,500,000 CROC (0.5% of the remaining pool).
+- 90% is split among the 5 checkers. Kian earns exactly 630,000 CROC.
+- 10% (350,000 CROC) is minted to the treasury.
+- The streak goes up by 1.
+
+Kian doesn't have to write anything down. The live app immediately shows his 630,000 CROC sitting in "Pending Rewards." The tokens are safely held in the contract's internal escrow.
+
+**Day 2 — The Tears**  
+The next day, only 2 people show up. The target of 5 is missed. The contract triggers a Missed Day:
+
+- Zero tokens are minted.
+- The streak instantly resets to 0.
+- The contract takes 5% of the entire treasury and burns it on-chain forever. Supply just shrank.
+
+**The Claim**  
+Later that day, Kian opens the app again. He sees the "Pending Rewards" balance is still there. He clicks "Claim." Because Day 1 is already settled, the contract safely transfers his exact 630,000 CROC from escrow into his wallet.
 
 Burning reduces supply. It does not promise any price.
 
