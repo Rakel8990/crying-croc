@@ -190,14 +190,10 @@ For a production mainnet deployment, a larger refundable bond and a holding requ
 
 | Idea | Why it is not in this build |
 |---|---|
-| Adaptive target (simulated, not implemented) | The track asks for parameters fixed at launch, bots can raise the target and then stop (which burns the treasury), and it is new logic with no key left to fix a bug. Our simulation compares three rules. In the bot-spike scenario a median-based rule misses days 8 to 11 and burns about 55.5M CROC, while the min-based rule `max(5, floor(0.5 x lowest of the last 7 days))` avoids those misses. See `docs/simulation/adaptive_target.md`. |
-| Governance or voting | Contradicts fixed parameters and no admin. |
-| Zero-knowledge or proof-of-human gate | No verifier we could demonstrate on testnet, and it needs time. |
-| Weekly challenge pool, soulbound badges | New payout and claim logic with no time to prove it. Evidence-only simulation of the pool's bot capture is in `docs/simulation/adaptive_target.md`. |
-| Yapper, staker or community-fund rewards | Would need an admin or an oracle. The treasury is burn-only. |
-| NEAR price or ATH trigger | Needs a price feed and breaks fixed parameters. |
-| Admin key or upgrade path | Would break the central claim. |
-| Seeding a trading pool | There is no pre-created supply: no presale, no team coins, and the treasury is burn-only. |
+| Adaptive target & ZK bot gates | We simulated an adaptive target and proved it's unsafe without a live ZK proof-of-humanity gate on testnet. If bots inflate the target and then leave, the real community is forced to hit an impossible number, causing false treasury burns. Because we couldn't demo ZK on testnet, we locked the target at 5 to keep the game fair. The bot-spike simulation is in `docs/simulation/adaptive_target.md`. |
+| Weekly challenge pools & badges | Adding new payout and claim logic right before the deadline introduces too much smart contract risk. We built an evidence-only simulation of how bots could capture this pool in `docs/simulation/adaptive_target.md`. |
+| $NEAR All-Time High trigger | The idea was to double the mint percentage whenever $NEAR hits a new ATH. This requires an external price oracle feed, which introduces a point of failure and breaks our core rule of having fixed, immutable on-chain parameters. |
+| Seeding a trading pool | There is no pre-created supply to seed a pool with. No presale, no team coins, and the treasury is strictly burn-only. |
 
 ## Known limitations
 
