@@ -14,7 +14,7 @@
 | Contract (final, keys deleted) | `croc-final-43570992494-1.testnet` |
 | Explorer | https://testnet.nearblocks.io/address/croc-final-43570992494-1.testnet |
 | Deployment proof | `docs/testnet/final/` and https://github.com/Rakel8990/crying-croc/actions/runs/43570992494 |
-| Repository | https://github.com/Rakel8990/crying-croc (the repo keeps its first name) |
+| Repository | https://github.com/Rakel8990/crying-croc |
 
 ## The Story Behind Crycodile 🐊
 
