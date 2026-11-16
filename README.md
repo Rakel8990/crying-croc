@@ -2,7 +2,9 @@
 
 > The tears are fake. The burn is real.
 
-**Status:** NEAR testnet only. Not audited. No sale, no price. Built for NEAR Hackathon 2026, track **Memecoins With Mechanics**. MIT license.
+**Status:** NEAR testnet only.  
+**Built for:** NEAR Hackathon 2026, track **Memecoins With Mechanics**.  
+**License:** MIT
 
 ## Links
 
