@@ -157,6 +157,16 @@ Every claim in this repository is verified below: the immutable deployment, the 
 | Adaptive Target Simulation | Proves that without ZK human gates, bots can artificially spike an adaptive target and leave, forcing real users to miss the target and burn the treasury. Validates our fixed target of 5. | `docs/simulation/adaptive_target.md` |
 | Live Dashboard | Reads directly from the contract. Tracks on-chain metrics (Total Supply, Treasury, Emission Pool), Community Stats (Current Streak, Daily Target, Milestone Tracker), and the Protocol Activity ledger (Settlement history / mint & burn log). | [crycodile.vercel.app](https://crycodile.vercel.app/protocol-stats#activity) |
 
+## Repository map
+
+- `src/` the contract (`lib.rs`) and its 41 tests (`tests.rs`)
+- `RULES.md` the rules, `REVIEW.md` a reviewer's guide (functions, invariants, tests)
+- `config/contracts.json` the contract the keeper settles
+- `scripts/` simulation and RPC helper scripts
+- `web/` the app (Next.js)
+- `docs/testnet/` sanitized results of the real testnet runs, `docs/simulation/` simulation outputs, `docs/DEPLOY_PLAN.md` deployment design, `docs/internal/` historical design notes
+- `.github/workflows/` tests, simulation, testnet deployment and test runs, the daily keeper
+
 ## Simulation and scale
 
 - If every day succeeds, about 14% of the pool is created by day 30 and 26% by day 60.
@@ -237,16 +247,6 @@ If CROC moves to mainnet, our thought process looks like this:
 Ultimately, we are open to exploring any new mechanic, tool, or integration in the future as long as it strengthens the game, benefits the community, and helps CROC grow.
 
 No price is promised. The token is an on-chain game mechanic, not an investment.
-
-## Repository map
-
-- `src/` the contract (`lib.rs`) and its 41 tests (`tests.rs`)
-- `RULES.md` the rules, `REVIEW.md` a reviewer's guide (functions, invariants, tests)
-- `config/contracts.json` the contract the keeper settles
-- `scripts/` simulation and RPC helper scripts
-- `web/` the app (Next.js)
-- `docs/testnet/` sanitized results of the real testnet runs, `docs/simulation/` simulation outputs, `docs/DEPLOY_PLAN.md` deployment design, `docs/internal/` historical design notes
-- `.github/workflows/` tests, simulation, testnet deployment and test runs, the daily keeper
 
 ## Built with
 
