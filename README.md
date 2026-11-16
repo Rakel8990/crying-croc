@@ -20,6 +20,8 @@
 
 ## The Story Behind Crycodile 🐊
 
+![Crycodile on NEAR](docs/assets/hero.jpg)
+
 ### Why Crycodile?
 
 The name comes from two things: *cry* and *crocodile*. It's also a little play on the expression *crocodile tears* when someone cries, but you're never quite sure how genuine those tears are.
