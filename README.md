@@ -188,6 +188,18 @@ Because we could not deploy a live ZK verifier on testnet in time, we locked the
 
 For a production mainnet deployment, a larger refundable bond and a holding requirement would price out bots. The ultimate fix is a ZK proof-of-personhood credential (like the NEAR I-Am-Human registry), ensuring one human equals one check-in. None of these can be truthfully demonstrated on testnet today, so we built the hardest game possible using only on-chain economic friction.
 
+## Hackathon track mapping
+
+| Track wording | Implementation |
+|---|---|
+| Supply that reacts to the community | Check-ins decide whether coins are created (good day) or the treasury is burned (missed day). |
+| Treasuries with rules | 10% of each good day goes in, 5% burns on each missed day, milestone bonuses move treasury coins to checkers once each. |
+| Onchain rituals and challenges | The daily check-in, and the 7, 15, 25 and 100 day streak milestones. |
+| Mechanic in the contract, not a backend | Every rule is in `src/lib.rs`. |
+| Parameters fixed at launch, readable, no admin | `target()` and `day_length_ns()` are views, no update method, access keys deleted. |
+| Page with streak, progress and log | The app shows the streak, today's progress, the milestone tracker and the settled-day log. |
+| 60-day simulation | `docs/simulation/`. |
+
 ## What we skipped on purpose, and why
 
 | Idea | Why it is not in this build |
@@ -225,18 +237,6 @@ If CROC moves to mainnet, our thought process looks like this:
 Ultimately, we are open to exploring any new mechanic, tool, or integration in the future as long as it strengthens the game, benefits the community, and helps CROC grow.
 
 No price is promised. The token is an on-chain game mechanic, not an investment.
-
-## Hackathon track mapping
-
-| Track wording | Implementation |
-|---|---|
-| Supply that reacts to the community | Check-ins decide whether coins are created (good day) or the treasury is burned (missed day). |
-| Treasuries with rules | 10% of each good day goes in, 5% burns on each missed day, milestone bonuses move treasury coins to checkers once each. |
-| Onchain rituals and challenges | The daily check-in, and the 7, 15, 25 and 100 day streak milestones. |
-| Mechanic in the contract, not a backend | Every rule is in `src/lib.rs`. |
-| Parameters fixed at launch, readable, no admin | `target()` and `day_length_ns()` are views, no update method, access keys deleted. |
-| Page with streak, progress and log | The app shows the streak, today's progress, the milestone tracker and the settled-day log. |
-| 60-day simulation | `docs/simulation/`. |
 
 ## Repository map
 
