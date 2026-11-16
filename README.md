@@ -161,6 +161,15 @@ Every claim in this repository is verified below: the immutable deployment, the 
 | Adaptive Target Simulation | Proves that without ZK human gates, bots can artificially spike an adaptive target and leave, forcing real users to miss the target and burn the treasury. Validates our fixed target of 5. | `docs/simulation/adaptive_target.md` |
 | Live Dashboard | Reads directly from the contract. Tracks on-chain metrics (Total Supply, Treasury, Emission Pool), Community Stats (Current Streak, Daily Target, Milestone Tracker), and the Protocol Activity ledger (Settlement history / mint & burn log). | [crycodile.vercel.app](https://crycodile.vercel.app/protocol-stats#activity) |
 
+### Visual Proof (On-Chain Receipts)
+
+<p align="center">
+  <img src="docs/screenshots/burns.png" width="49%" alt="NEAR Explorer transaction history showing the initial 300,000,000 token mint and two subsequent 5% treasury burns of 15,000,000 and 14,250,000 tokens.">
+  <img src="docs/screenshots/key-deleted.png" width="49%" alt="NEAR Explorer access key list showing the full access key for the contract marked as Deleted.">
+  <br>
+  <em>Left: The 300M initial mint and subsequent 5% treasury burns. Right: The contract's full access key marked as permanently deleted.</em>
+</p>
+
 ## Repository map
 
 - `src/` the contract (`lib.rs`) and its 41 tests (`tests.rs`)
