@@ -4,6 +4,18 @@
 
 **Status:** NEAR testnet only. Not audited. No sale, no price. Built for NEAR Hackathon 2026, track **Memecoins With Mechanics**. MIT license.
 
+## Links
+
+| What | Where |
+|---|---|
+| Live app | https://crycodile.vercel.app |
+| Demo video | https://x.com/22kian_eth/status/2121729005124522212 |
+| Demo post on X | https://x.com/22kian_eth/status/2121729005124522212 |
+| Contract (final, keys deleted) | `croc-final-43570992494-1.testnet` |
+| Explorer | https://testnet.nearblocks.io/address/croc-final-43570992494-1.testnet |
+| Deployment proof | `docs/testnet/final/` and https://github.com/Rakel8990/crying-croc/actions/runs/43570992494 |
+| Repository | https://github.com/Rakel8990/crying-croc |
+
 ## The Story Behind Crycodile 🐊
 
 ### Why Crycodile?
@@ -51,18 +63,6 @@ Nobody gets to simply decide to mint more because they feel like it. The rules a
 We gave Crycodile a name, a face, and a home. The community gives him a reason to wake up every day.
 
 And if nobody does? Well, you know what happens to Crycodile.
-
-## Links
-
-| What | Where |
-|---|---|
-| Live app | https://crycodile.vercel.app |
-| Demo video | https://x.com/22kian_eth/status/2121729005124522212 |
-| Demo post on X | https://x.com/22kian_eth/status/2121729005124522212 |
-| Contract (final, keys deleted) | `croc-final-43570992494-1.testnet` |
-| Explorer | https://testnet.nearblocks.io/address/croc-final-43570992494-1.testnet |
-| Deployment proof | `docs/testnet/final/` and https://github.com/Rakel8990/crying-croc/actions/runs/43570992494 |
-| Repository | https://github.com/Rakel8990/crying-croc |
 
 ## How the mechanic works
 
