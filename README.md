@@ -167,12 +167,16 @@ Every claim in this repository is verified below: the immutable deployment, the 
 - `docs/testnet/` sanitized results of the real testnet runs, `docs/simulation/` simulation outputs, `docs/DEPLOY_PLAN.md` deployment design, `docs/internal/` historical design notes
 - `.github/workflows/` tests, simulation, testnet deployment and test runs, the daily keeper
 
-## Simulation and scale
+## Simulation & Scale (Tokenomics)
 
-- If every day succeeds, about 14% of the pool is created by day 30 and 26% by day 60.
-- Treasury burned after missed days (not necessarily in a row): 1 day 5%, 7 days 30%, 14 days 51%, 30 days 79%.
-- With no check-ins at all, the treasury melts to almost nothing in about a year.
-- A fixed target must sit below the quiet-day crowd. With a crowd far above it, no day is ever missed and nothing burns. The target is a deployment setting, so a mainnet version would choose it for its expected crowd.
+We built an independent Python model to stress-test the exact contract math before deploying. Here is what the simulation proves:
+
+- **Emission Speed:** If the community hits the target every single day, roughly 14% of the emission pool is minted by Day 30, and 26% by Day 60.
+- **Treasury Burn (The Deflationary Force):** If the community misses days (not necessarily in a row), the treasury shrinks permanently: 1 missed day = 5% burned, 7 missed days = 30% burned, 14 missed days = 51% burned, 30 missed days = 79% burned.
+- **The Worst Case:** With zero check-ins, the 300M treasury melts to almost nothing in about a year.
+- **Target Calibration:** The target is a deployment setting. It must sit below the expected "quiet-day" crowd. If the crowd is massively larger than the target, no days are ever missed and nothing burns (which is why a mainnet deployment would recalibrate this number).
+
+*(See the full matrices, PNG charts, and replay CSVs in `docs/simulation/`)*
 
 ## Sybil Defense & Why the Target is Fixed at 5
 
