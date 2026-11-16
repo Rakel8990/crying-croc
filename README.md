@@ -197,14 +197,15 @@ For a production mainnet deployment, a larger refundable bond and a holding requ
 
 ## Known limitations
 
-- Unclaimed rewards stay in escrow forever. There is no expiry or recovery.
-- Anyone can send tokens into the treasury, which changes the size of later burns.
-- Someone must close each day. The keeper does it daily. If it fails, anyone can call `settle()`.
-- With a very large crowd, a fixed target is always met and nothing burns.
-- The contract pays storage for its small per-day records from its NEAR balance (about 9.997 NEAR at deployment). Anyone can top it up with a plain transfer.
-- The mascot on the page reacts to today's live progress (crying while today's check-ins are below the target, happy once it is reached). The burn itself only happens when the day is settled.
-- Wallet connection currently uses Meteor Wallet through the NEAR wallet selector. That is a current choice, not a commitment. Reading data needs no wallet.
-- Testnet only. Not audited. AI-assisted reviews are not a professional audit.
+Why we document these: Crying Croc has no admin keys and no upgrade path. Once deployed, the rules are permanent. Because the contract cannot be patched later, we believe absolute transparency about its operational edges is required. Hiding these would be a security risk to future users.
+
+- **Unclaimed rewards stay in escrow forever.** There is no expiry or recovery. *(Why: An expiry function would require an admin override, which breaks the "no admin" rule. Lazy claims are safe and permanent.)*
+- **Anyone can send tokens into the treasury.** *(Why: The treasury is a public account. Donations change the math for future burns, but they do not mint new tokens or break the contract.)*
+- **Settlement requires a trigger.** Blockchains cannot execute code autonomously at midnight. Our GitHub Keeper calls `settle()` daily. If the Keeper goes offline, the game pauses until anyone in the world manually calls `settle()`. The burn only happens when this function is triggered.
+- **Storage requires a NEAR balance.** The contract pays storage rent out of its own NEAR balance (about 9.997 NEAR at deployment) to save the per-day records. Anyone can top it up with a plain transfer. If the balance hits zero, the state would freeze.
+- **Wallet connection currently uses Meteor Wallet via the NEAR wallet selector.** Reading data on the website requires no wallet.
+- **The target is fixed at 5.** This guarantees a fair start for a new community, but if the protocol scales to thousands of daily users, the target will always be met. A mainnet deployment would require an adaptive target (safely scaled against bots) or a newly calculated starting target.
+- **Testnet only.** The contract is not audited. AI-assisted reviews are not a professional security audit.
 
 ## Mainnet plan (not built)
 
