@@ -182,6 +182,10 @@ We built an independent Python model to stress-test the exact contract math befo
 
 *(See the full matrices, PNG charts, and replay CSVs in `docs/simulation/`)*
 
+<p align="center">
+  <img src="docs/screenshots/simulation-chart.png" alt="60-day simulation chart showing total supply under different bot and hype scenarios" width="800">
+</p>
+
 ## Sybil Defense & Why the Target is Fixed at 5
 
 We don't pretend the contract can see humans. It sees wallets. One person with 100 wallets can take a massive share of the daily pot. We built the math to show exactly what that looks like.
