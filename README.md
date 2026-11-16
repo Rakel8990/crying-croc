@@ -145,6 +145,8 @@ Follow these steps in order. You do not need a wallet to verify steps 1 through 
 - **Do:** On the live app, connect a Meteor Wallet (set to Testnet), register, and click "Check In". Sign the transaction.
 - **See:** A success message and a transaction hash on the NEAR Explorer. If 5 wallets check in, the streak advances. If it misses, the next `settle()` call will burn 5% of the treasury.
 
+![Live Check-in on NEAR Testnet](docs/assets/checkin.jpg)
+
 ## Evidence
 
 Every claim in this repository is verified below: the immutable deployment, the programmable treasury milestones, the 60-day simulation, and the live UI.
