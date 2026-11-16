@@ -207,9 +207,22 @@ Why we document these: Crying Croc has no admin keys and no upgrade path. Once d
 - **The target is fixed at 5.** This guarantees a fair start for a new community, but if the protocol scales to thousands of daily users, the target will always be met. A mainnet deployment would require an adaptive target (safely scaled against bots) or a newly calculated starting target.
 - **Testnet only.** The contract is not audited. AI-assisted reviews are not a professional security audit.
 
-## Mainnet plan (not built)
+## Future Explorations (If we ever go to mainnet)
 
-A mainnet version would be a new contract with its target and numbers chosen again, since nothing can change after the keys are deleted. Phase 0: check-in only, no sale. Phase 1: anyone who earned CROC and holds NEAR can open a pool on a NEAR exchange, with no permission needed. Phase 2: a new contract that seeds a locked pool at deployment, with the treasury split into a burn part and a liquidity part, plus stronger sybil gates. No price is promised.
+The current testnet contract is immutable and its keys are deleted. If the community grows and we decide to launch a mainnet version, it would require a fresh deployment with new parameters.
+
+We include this section to show our long-term vision. These are not hard commitments or promises, but rather the architectural ideas we have in mind if we scale.
+
+If CROC moves to mainnet, our thought process looks like this:
+
+- **The V2 Upgrade:** A new contract would be deployed. We would likely split the treasury into a permanent burn portion and a locked liquidity portion, allowing the contract to seed a DEX pool (like Rhea) instantly upon deployment.
+- **The Adaptive Target:** We locked the target at 5 for this testnet build to protect the community from bot griefing. On mainnet, we might introduce an adaptive target (e.g., scaling to 80% of the 7-day median check-ins), but only if it is paired with a live ZK proof-of-humanity gate to prevent bots from manipulating the threshold.
+- **Weekly Challenge Pools:** To keep engagement high after the initial hype fades, we could introduce a weekly challenge pool. Users would stake CROC to commit to a 7-day streak; those who survive split the pool.
+- **Permissionless Liquidity:** We would never hold a presale. If users earn CROC, they can freely open liquidity pools on NEAR DEXs without our permission.
+
+Ultimately, we are open to exploring any new mechanic, tool, or integration in the future as long as it strengthens the game, benefits the community, and helps CROC grow.
+
+No price is promised. The token is an on-chain game mechanic, not an investment.
 
 ## Hackathon track mapping
 
