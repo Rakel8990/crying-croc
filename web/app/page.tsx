@@ -14,7 +14,7 @@ export default function Home() {
           <nav className="nav" aria-label="Main navigation"><Link className="active" href="/">Home</Link><Link href="/check-in">Check In</Link><Link href="/protocol-stats">Protocol Stats</Link></nav>
           <div className="header-actions"><span className="network"><span className="live-dot" />NEAR TESTNET</span><Link className="connect-btn" href="/check-in"><Wallet />Connect Wallet</Link></div>
         </header>
-        <section className="hero"><div className="hero-copy hero-copy-with-icons"><div className="hero-with-icons"><h1>$CROC<br /><span>ON NEAR.</span></h1><TokenArtworkPair /></div><p>One community. One daily target. Every check-in counts.</p><p className="card-description">Crying Croc is a community-powered token experiment built around daily participation. Show up, reach the target, and share in the rewards. Miss the target, and the treasury takes a hit.</p></div></section>
+        <section className="hero"><div className="hero-copy hero-copy-with-icons"><div className="hero-with-icons"><h1>$CROC<br /><span>ON NEAR.</span></h1><TokenArtworkPair /></div><p>One community. One daily target. Every check-in counts.</p><p className="card-description">Crying Croc ($CROC) is a community-powered memecoin experiment built on NEAR for the 2026 NEAR Hackathon. It puts a simple question to the test: what if a community didn&apos;t just support a memecoin, but actually shaped how it works?</p></div></section>
         <StoryExperience />
       </div>
     </main>
