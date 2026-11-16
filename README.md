@@ -269,16 +269,6 @@ Ultimately, we are open to exploring any new mechanic, tool, or integration in t
 
 No price is promised. The token is an on-chain game mechanic, not an investment.
 
-## 🟢 Proof of Life: Post-Submission
-
-The protocol didn't stop after the deadline. The GitHub Keeper is still settling days autonomously. As of today, the treasury has executed multiple consecutive 5% burns for missed days. You can see the live ledger below or verify the burns on [NEAR Explorer](https://testnet.nearblocks.io/address/croc-final-43570992494-1.testnet?tab=token_txns).
-
-<p align="center">
-  <img src="docs/screenshots/live-settlement-history.png" width="800" alt="Live UI showing the protocol activity ledger. It displays two consecutive missed days (Day 20771 and 20772) with 1 and 2 checkers, both resulting in a 5% treasury burn.">
-  <br>
-  <em>The live app tracking the on-chain settlement history: two consecutive missed days triggering 5% treasury burns.</em>
-</p>
-
 ## Built with
 
 Rust, near-sdk 5.17.2, near-contract-standards 5.17.2 (NEP-141, NEP-145, NEP-148), near-cli-rs 0.31.1 and actionlint 1.7.12 (in GitHub Actions only), Python (simulations), GitHub Actions. App: Next.js, React, Tailwind CSS, Framer Motion and the NEAR wallet selector with Meteor Wallet (see `web/package.json`).
@@ -288,3 +278,13 @@ Rust, near-sdk 5.17.2, near-contract-standards 5.17.2 (NEP-141, NEP-145, NEP-148
 ## License
 
 MIT
+
+## 🟢 Proof of Life: Post-Submission
+
+The protocol didn't stop after the deadline. The GitHub Keeper is still settling days autonomously. As of today, the treasury has executed multiple consecutive 5% burns for missed days. You can see the live ledger below or verify the burns on [NEAR Explorer](https://testnet.nearblocks.io/address/croc-final-43570992494-1.testnet?tab=token_txns).
+
+<p align="center">
+  <img src="docs/screenshots/live-settlement-history.png" width="800" alt="Live UI showing the protocol activity ledger. It displays two consecutive missed days (Day 20771 and 20772) with 1 and 2 checkers, both resulting in a 5% treasury burn.">
+  <br>
+  <em>The live app tracking the on-chain settlement history: two consecutive missed days triggering 5% treasury burns.</em>
+</p>
